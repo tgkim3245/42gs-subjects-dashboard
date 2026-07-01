@@ -53,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const tooltipLevel = document.getElementById('tooltip-level');
   const tooltipBh = document.getElementById('tooltip-bh');
 
-  const table = document.querySelector('.dashboard-table');
   if (table) {
     table.addEventListener('mouseover', (e) => {
       // 1. Profile Tooltip delegation
