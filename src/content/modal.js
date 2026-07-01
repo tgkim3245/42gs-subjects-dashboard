@@ -860,6 +860,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const predefinedValues = PREDEFINED_COHORTS.map(c => c.value);
     const extraCohorts = Array.from(foundCohorts).filter(val => !predefinedValues.includes(val));
 
+    // Helper to identify if cohort is 4기 or later (or starts after 2026-04)
+    function isCohort4OrLater(cValue) {
+      if (!cValue) return false;
+      const match = cValue.match(/(\d+)기/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        return num >= 4;
+      }
+      const dateMatch = cValue.match(/^(\d{4})-(\d{2})/);
+      if (dateMatch) {
+        const year = parseInt(dateMatch[1], 10);
+        const month = parseInt(dateMatch[2], 10);
+        if (year > 2026) return true;
+        if (year === 2026 && month >= 4) return true;
+      }
+      return false;
+    }
+
     // 3. Dynamically build checkboxes (horizontal pill layout)
     dynamicContainer.innerHTML = '';
     
@@ -867,7 +885,8 @@ document.addEventListener('DOMContentLoaded', () => {
     PREDEFINED_COHORTS.forEach(cohort => {
       const label = document.createElement('label');
       label.className = 'cohort-label';
-      const isChecked = cohortStates[cohort.value] !== undefined ? cohortStates[cohort.value] : true;
+      const defaultChecked = !isCohort4OrLater(cohort.value);
+      const isChecked = cohortStates[cohort.value] !== undefined ? cohortStates[cohort.value] : defaultChecked;
       label.innerHTML = `<input type="checkbox" value="${cohort.value}" class="cohort-checkbox" ${isChecked ? 'checked' : ''}> ${cohort.value}`;
       dynamicContainer.appendChild(label);
     });
@@ -876,7 +895,8 @@ document.addEventListener('DOMContentLoaded', () => {
     extraCohorts.forEach(cohort => {
       const label = document.createElement('label');
       label.className = 'cohort-label';
-      const isChecked = cohortStates[cohort] !== undefined ? cohortStates[cohort] : true;
+      const defaultChecked = !isCohort4OrLater(cohort);
+      const isChecked = cohortStates[cohort] !== undefined ? cohortStates[cohort] : defaultChecked;
       label.innerHTML = `<input type="checkbox" value="${cohort}" class="cohort-checkbox" ${isChecked ? 'checked' : ''}> ${cohort}`;
       dynamicContainer.appendChild(label);
     });
@@ -907,6 +927,22 @@ document.addEventListener('DOMContentLoaded', () => {
         updateFilters();
       });
     });
+
+    // Sync allCheckbox state initially on load
+    if (allCheckbox && cohortCheckboxes.length > 0) {
+      const allChecked = Array.from(cohortCheckboxes).every(c => c.checked);
+      const noneChecked = Array.from(cohortCheckboxes).every(c => !c.checked);
+      if (allChecked) {
+        allCheckbox.checked = true;
+        allCheckbox.indeterminate = false;
+      } else if (noneChecked) {
+        allCheckbox.checked = false;
+        allCheckbox.indeterminate = false;
+      } else {
+        allCheckbox.checked = false;
+        allCheckbox.indeterminate = true;
+      }
+    }
 
     updateFilters();
   }
