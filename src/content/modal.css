@@ -119,15 +119,13 @@ body {
   color: var(--bh-danger);
 }
 
-/* Toolbar (Tabs & Search) */
-.toolbar {
-  height: 50px;
+/* Header Center (Tabs & Search) */
+.header-center {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--border);
-  background-color: var(--bg-surface);
+  gap: 24px;
+  flex-grow: 1;
+  justify-content: center;
 }
 
 .tabs {

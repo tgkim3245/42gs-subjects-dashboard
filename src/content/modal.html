@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <title>42 Subject Dashboard</title>
   <link rel="stylesheet" href="modal.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
+
 <body>
   <div class="dashboard-container">
     <!-- Header -->
@@ -16,6 +18,17 @@
         </h1>
         <span class="sync-subtitle" id="sync-subtitle">최종 동기화 완료: 방금 전</span>
       </div>
+      <div class="header-center">
+        <div class="tabs">
+          <button id="tab-all" class="tab-btn active">전체 보기</button>
+          <button id="tab-starred" class="tab-btn">⭐ 관심 카뎃</button>
+        </div>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="카뎃 검색 (Login ID)..." class="search-input">
+        </div>
+      </div>
+
       <div class="header-right">
         <button id="settings-btn" class="icon-btn" title="설정">⚙️</button>
         <button id="btn-resync" class="icon-btn" title="데이터 초기화 + 재수집">🔄</button>
@@ -30,11 +43,13 @@
         <div class="settings-options">
           <label class="settings-radio">
             <input type="radio" name="storage-backend" value="chrome" id="storage-chrome" checked>
-            chrome.storage (익스텐션 데이터) <span id="usage-chrome" style="color:#888; font-size:12px; margin-left:8px;">계산 중...</span>
+            chrome.storage (익스텐션 데이터) <span id="usage-chrome" style="color:#888; font-size:12px; margin-left:8px;">계산
+              중...</span>
           </label>
           <label class="settings-radio">
             <input type="radio" name="storage-backend" value="local" id="storage-local">
-            localStorage (브라우저 사이트 데이터) <span id="usage-local" style="color:#888; font-size:12px; margin-left:8px;">계산 중...</span>
+            localStorage (브라우저 사이트 데이터) <span id="usage-local" style="color:#888; font-size:12px; margin-left:8px;">계산
+              중...</span>
           </label>
         </div>
       </div>
@@ -44,7 +59,7 @@
         <div class="settings-auth-box">
           <input type="text" id="api-uid" class="settings-input" placeholder="UID (Client ID) 입력">
           <input type="password" id="api-secret" class="settings-input" placeholder="SECRET (Client Secret) 입력">
-          <button id="btn-save-auth" class="settings-btn-primary">저장 및 토큰 발급</button>
+          <button id="btn-save-auth" class="settings-btn-primary">토큰 발급</button>
         </div>
         <span id="auth-status-msg" class="auth-status">토큰 없음 (미연동)</span>
         <div id="worker-error-msg" style="color: #ff6b6b; font-size: 12px; margin-top: 4px; display: none;"></div>
@@ -67,18 +82,6 @@
       <div class="settings-row" style="display: flex; justify-content: space-between; align-items: center;">
         <span class="settings-label" style="color: var(--accent-red, #ff6b6b);">⚠️ 데이터 관리</span>
         <button id="btn-clear-data" class="settings-btn-danger">저장된 데이터 초기화</button>
-      </div>
-    </section>
-
-    <!-- Tab & Search Bar -->
-    <section class="toolbar">
-      <div class="tabs">
-        <button id="tab-all" class="tab-btn active">전체 보기</button>
-        <button id="tab-starred" class="tab-btn">⭐ 관심 카뎃</button>
-      </div>
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="search-input" placeholder="카뎃 검색 (Login ID)..." class="search-input">
       </div>
     </section>
 
@@ -187,4 +190,5 @@
   <script src="data_sync.js"></script>
   <script src="modal.js"></script>
 </body>
+
 </html>
