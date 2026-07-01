@@ -115,31 +115,33 @@ async function startQueueRunner() {
           });
           const storageKey = `user_data_${job.login}`;
           await new Promise(resolve => chrome.storage.local.set({ [storageKey]: slimData }, resolve));
-          chrome.runtime.sendMessage({ type: 'JOB_COMPLETED', payload: { login: job.login, type: job.type } }).catch(() => {});
+          chrome.runtime.sendMessage({ type: 'JOB_COMPLETED', payload: { login: job.login, type: job.type } }).catch(() => { });
         }
       } else if (job.type === 'FETCH_USER_INDEX') {
         const page = job.page || 1;
         const perPage = 100;
         const params = Object.assign({ page, per_page: perPage }, job.params || {});
-        
+
         data = await self.ApiClient.fetch(job.endpoint, params);
-        
+
         if (data && Array.isArray(data)) {
           console.log('[Worker] FETCH_USER_INDEX response length:', data.length);
           if (data.length > 0) {
             console.log('[Worker] Sample user data from API:', JSON.stringify(data[0]));
           }
-          
+
           // Parse CursusUser records
           const parsedUsers = [];
           data.forEach(rawItem => {
             if (!rawItem.user) return;
+            const avatar = rawItem.user.image?.link || rawItem.user.image_url || '';
             parsedUsers.push({
               id: rawItem.user.id,
               login: rawItem.user.login,
               level: rawItem.level,
               blackholed_at: rawItem.blackholed_at,
-              begin_at: rawItem.begin_at
+              begin_at: rawItem.begin_at,
+              avatar_url: avatar
             });
           });
           console.log('[Worker] Parsed Cursus 21 users count:', parsedUsers.length);
@@ -167,7 +169,7 @@ async function startQueueRunner() {
             });
           } else {
             console.log('[Worker] FETCH_USER_INDEX completed entirely.');
-            chrome.runtime.sendMessage({ type: 'INDEX_COMPLETED' }).catch(() => {});
+            chrome.runtime.sendMessage({ type: 'INDEX_COMPLETED' }).catch(() => { });
           }
         }
       }
@@ -181,9 +183,9 @@ async function startQueueRunner() {
           job.retries += 1;
           const jitter = Math.floor(Math.random() * 500);
           const backoffDelay = BASE_DELAY * Math.pow(2, job.retries) + jitter;
-          
+
           console.warn(`[Worker] API Error ${error.status}. Retrying job ${job.id} (${job.retries}/${MAX_RETRIES}) after ${backoffDelay}ms`);
-          
+
           // Re-insert job
           jobQueue.push(job);
           persistQueue();
@@ -193,7 +195,7 @@ async function startQueueRunner() {
           if (error.status === 429 && error.retryAfter) {
             pauseTime = Math.max(pauseTime, error.retryAfter * 1000);
           }
-          
+
           clearTimeout(pauseTimeout);
           pauseTimeout = setTimeout(() => {
             isPaused = false;
@@ -225,7 +227,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const job = message.payload;
     if (!job.id) job.id = `job_${job.login || 'sys'}_${Date.now()}`;
     if (typeof job.retries === 'undefined') job.retries = 0;
-    
+
     enqueueJob(job);
     sendResponse({ status: 'enqueued' });
   } else if (message.type === 'GET_QUEUE_STATUS') {
