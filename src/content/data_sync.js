@@ -1,18 +1,18 @@
 // data_sync.js - Handles API data synchronization, parsing, and UI rendering
 
-// Slug keys must match the exact `project.slug` returned by the 42 API
+// Slug keys are normalized without `42cursus-` prefix internally
 const COL_MAP = {
-  '42cursus-libft': 1, '42cursus-ft_printf': 2, '42cursus-get_next_line': 3, '42cursus-born2beroot': 4,
-  '42cursus-push_swap': 5, 'exam-rank-02': 8, '42cursus-minishell': 9, '42cursus-philosophers': 10,
-  'exam-rank-03': 11, '42cursus-netpractice': 13, 'exam-rank-04': 15, '42cursus-inception': 16,
-  'exam-rank-05': 19, '42cursus-ft_transcendence': 20, 'exam-rank-06': 21
+  'libft': 1, 'ft_printf': 2, 'get_next_line': 3, 'born2beroot': 4,
+  'push_swap': 5, 'exam-rank-02': 8, 'minishell': 9, 'philosophers': 10,
+  'exam-rank-03': 11, 'netpractice': 13, 'exam-rank-04': 15, 'inception': 16,
+  'exam-rank-05': 19, 'ft_transcendence': 20, 'exam-rank-06': 21
 };
 
 const CHOICE_COLS = {
-  6: ['42cursus-minitalk', '42cursus-pipex'],
-  7: ['42cursus-so_long', '42cursus-fract-ol', '42cursus-fdf'],
-  12: ['42cursus-cub3d', '42cursus-minirt'],
-  17: ['42cursus-ft_irc', '42cursus-webserv']
+  6: ['minitalk', 'pipex'],
+  7: ['so_long', 'fract-ol', 'fdf'],
+  12: ['cub3d', 'minirt'],
+  17: ['ft_irc', 'webserv']
 };
 
 const MODULE_COLS = {
@@ -33,7 +33,8 @@ function parseUserData(projectsUsers) {
 
   projectsUsers.forEach(pu => {
     if (!pu.project) return;
-    const slug = pu.project.slug.toLowerCase();
+    // Normalize slug by removing 42cursus- prefix if present
+    const slug = pu.project.slug.toLowerCase().replace(/^42cursus-/, '');
     parsed[slug] = {
       status: pu.status,
       validated: pu['validated?'],
