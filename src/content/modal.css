@@ -1066,8 +1066,10 @@ th.filter-active-unstarted {
 
 .settings-auth-box {
   display: flex;
-  gap: 10px;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  width: 240px;
 }
 
 .settings-input {
@@ -1120,8 +1122,9 @@ th.filter-active-unstarted {
 
 .auth-status {
   font-size: 12px;
-  margin-left: 10px;
+  margin-top: 6px;
   color: var(--text-secondary);
+  text-align: center;
 }
 .auth-status.success {
   color: var(--status-pass-text);
