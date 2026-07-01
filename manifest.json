@@ -28,6 +28,7 @@
       "resources": [
         "src/content/modal.html",
         "src/content/modal.css",
+        "src/content/data_sync.js",
         "src/content/modal.js"
       ],
       "matches": ["*://*.intra.42.fr/*"]

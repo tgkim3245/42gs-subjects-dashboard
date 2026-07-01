@@ -1104,6 +1104,22 @@ th.filter-active-unstarted {
   background: var(--accent-blue-hover);
 }
 
+.settings-btn-danger {
+  background: var(--status-fail-text, #ff4d4d);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.settings-btn-danger:hover {
+  background: #cc3d3d;
+}
+
 .auth-status {
   font-size: 12px;
   margin-left: 10px;

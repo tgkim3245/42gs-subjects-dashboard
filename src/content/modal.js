@@ -221,20 +221,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ─── P1-3: Settings Panel ─────────────────────────────────────────────────
+  // ─── P1-3 & P2-1: Settings Panel & API Auth ───────────────────────────────
   const settingsBtn = document.getElementById('settings-btn');
   const settingsPanel = document.getElementById('settings-panel');
+  
   if (settingsBtn && settingsPanel) {
     settingsBtn.addEventListener('click', () => {
       const hidden = settingsPanel.style.display === 'none';
-      settingsPanel.style.display = hidden ? 'block' : 'none';
+      settingsPanel.style.display = hidden ? 'flex' : 'none';
+
+      if (hidden) {
+        // Calculate chrome.storage size
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.getBytesInUse(null, (bytes) => {
+            const usageChrome = document.getElementById('usage-chrome');
+            if (usageChrome) usageChrome.textContent = bytes > 0 ? (bytes / 1024).toFixed(2) + ' KB' : '0 KB';
+          });
+        }
+        // Calculate localStorage size
+        let lsBytes = 0;
+        for (let key in localStorage) {
+          if (localStorage.hasOwnProperty(key)) {
+            lsBytes += localStorage[key].length + key.length;
+          }
+        }
+        const usageLocal = document.getElementById('usage-local');
+        if (usageLocal) usageLocal.textContent = lsBytes > 0 ? (lsBytes / 1024).toFixed(2) + ' KB' : '0 KB';
+
+        // Check for worker errors
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.get(['last_worker_error'], (res) => {
+            const errDiv = document.getElementById('worker-error-msg');
+            if (errDiv) {
+              if (res.last_worker_error) {
+                const d = new Date(res.last_worker_error.timestamp).toLocaleTimeString();
+                errDiv.textContent = `⚠️ 수집 에러 (${d}): ${res.last_worker_error.message} (Status: ${res.last_worker_error.status})`;
+                errDiv.style.display = 'block';
+              } else {
+                errDiv.style.display = 'none';
+              }
+            }
+          });
+        }
+      }
     });
 
     // Storage backend radio change
     document.querySelectorAll('input[name="storage-backend"]').forEach(radio => {
       radio.addEventListener('change', () => {
         storageBackend = radio.value;
-        // Persist to chrome.storage meta
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
           chrome.storage.local.get(['meta'], (result) => {
             const meta = result.meta || {};
@@ -242,11 +277,130 @@ document.addEventListener('DOMContentLoaded', () => {
             chrome.storage.local.set({ meta });
           });
         }
-        // Re-save favorites under new backend
         saveFavorites();
       });
     });
+
+    // API Auth Logic (P2-1)
+    const btnSaveAuth = document.getElementById('btn-save-auth');
+    const inputUid = document.getElementById('api-uid');
+    const inputSecret = document.getElementById('api-secret');
+    const statusMsg = document.getElementById('auth-status-msg');
+
+    // Load existing auth data
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['api_uid', 'api_secret', 'api_token'], (res) => {
+        if (res.api_uid) inputUid.value = res.api_uid;
+        if (res.api_secret) inputSecret.value = res.api_secret;
+        if (res.api_token) {
+          statusMsg.textContent = '✅ 연동 완료 (토큰 보유)';
+          statusMsg.className = 'auth-status success';
+        }
+      });
+    }
+
+    if (btnSaveAuth) {
+      btnSaveAuth.addEventListener('click', async () => {
+        const uid = inputUid.value.trim();
+        const secret = inputSecret.value.trim();
+        if (!uid || !secret) {
+          statusMsg.textContent = '❌ UID와 SECRET을 모두 입력해주세요.';
+          statusMsg.className = 'auth-status error';
+          return;
+        }
+
+        btnSaveAuth.disabled = true;
+        statusMsg.textContent = '⏳ 토큰 발급 중...';
+        statusMsg.className = 'auth-status';
+        
+        // Clear previous error
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.remove(['last_worker_error']);
+        }
+        const errDiv = document.getElementById('worker-error-msg');
+        if (errDiv) errDiv.style.display = 'none';
+
+        try {
+          const response = await fetch('https://api.intra.42.fr/oauth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              grant_type: 'client_credentials',
+              client_id: uid,
+              client_secret: secret
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          if (data.access_token) {
+            // Save to chrome.storage
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.set({
+                api_uid: uid,
+                api_secret: secret,
+                api_token: data.access_token,
+                api_token_expires: Date.now() + (data.expires_in * 1000)
+              }, () => {
+                statusMsg.textContent = '✅ 연동 완료 (토큰 보유)';
+                statusMsg.className = 'auth-status success';
+                
+                // Reset index update time to force refetch, and trigger syncData
+                chrome.storage.local.get(['meta'], (res) => {
+                  const meta = res.meta || {};
+                  meta.users_index_updated = 0;
+                  chrome.storage.local.set({ meta }, () => {
+                    if (typeof window.syncData === 'function') {
+                      window.syncData();
+                    }
+                  });
+                });
+              });
+            }
+          } else {
+            throw new Error('No access token in response');
+          }
+        } catch (error) {
+          console.error('[API Auth] Token fetch failed:', error);
+          statusMsg.textContent = `❌ 발급 실패: ${error.message}`;
+          statusMsg.className = 'auth-status error';
+        } finally {
+          btnSaveAuth.disabled = false;
+        }
+      });
+    }
+
+    // Clear Stored Data Logic
+    const btnClearData = document.getElementById('btn-clear-data');
+    if (btnClearData) {
+      btnClearData.addEventListener('click', () => {
+        if (!confirm('저장된 모든 카뎃 및 과제 캐시 데이터를 삭제하시겠습니까? (API 연동 설정은 유지됩니다)')) {
+          return;
+        }
+
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+          chrome.runtime.sendMessage({ type: 'CLEAR_QUEUE' }, () => {
+            if (chrome.storage && chrome.storage.local) {
+              chrome.storage.local.get(null, (items) => {
+                const keysToRemove = Object.keys(items).filter(key => {
+                  return !['api_uid', 'api_secret', 'api_token', 'api_token_expires'].includes(key);
+                });
+
+                chrome.storage.local.remove(keysToRemove, () => {
+                  alert('저장된 데이터가 초기화되었습니다. 페이지를 새로고침합니다.');
+                  location.reload();
+                });
+              });
+            }
+          });
+        }
+      });
+    }
   }
+
 
   // ─── Star Icon / Favorite Cadet Logic ────────────────────────────────────
   let favorites = [];
