@@ -27,6 +27,16 @@ const TARGET_SLUGS = new Set([
   ...Object.values(MODULE_COLS).flat()
 ]);
 
+function escapeHtml(string) {
+  if (!string) return '';
+  return string
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function parseUserData(projectsUsers) {
   const parsed = {};
   if (!Array.isArray(projectsUsers)) return parsed;
@@ -49,13 +59,18 @@ function getCellHTMLForSingle(parsed, slug) {
   const p = parsed[slug];
   if (!p || !p.status) return `<td class="cell cell--empty" data-col="-" data-project-name="${slug}"><span class="cell__score">—</span></td>`;
   
+  const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleDateString('ko-KR') : '';
+  const attempts = [{ date: dateStr, score: p.mark !== null ? p.mark : '?', status: p.validated ? 'pass' : 'fail' }];
+  const attemptsJson = escapeHtml(JSON.stringify(attempts));
+  const passDateAttr = p.validated ? `data-pass-date="${dateStr}"` : '';
+
   if (p.status === 'finished' && p.validated === true) {
-    return `<td class="cell cell--pass" data-col="-" data-project-name="${slug}"><span class="cell__score">${p.mark !== null ? p.mark : '✅'}</span></td>`;
+    return `<td class="cell cell--pass" data-col="-" data-project-name="${slug}" ${passDateAttr} data-attempts="${attemptsJson}"><span class="cell__score">${p.mark !== null ? p.mark : '✅'}</span></td>`;
   }
   if (p.status === 'finished' && p.validated === false) {
-    return `<td class="cell cell--fail" data-col="-" data-project-name="${slug}"><span class="cell__score">${p.mark !== null ? p.mark : 'F'}</span></td>`;
+    return `<td class="cell cell--fail" data-col="-" data-project-name="${slug}" data-attempts="${attemptsJson}"><span class="cell__score">${p.mark !== null ? p.mark : 'F'}</span></td>`;
   }
-  return `<td class="cell cell--progress" data-col="-" data-project-name="${slug}"><span class="cell__score">●</span></td>`;
+  return `<td class="cell cell--progress" data-col="-" data-project-name="${slug}" data-attempts="${attemptsJson}"><span class="cell__score">●</span></td>`;
 }
 
 function getCellHTMLForChoice(parsed, slugs) {
@@ -64,12 +79,19 @@ function getCellHTMLForChoice(parsed, slugs) {
     const p = parsed[slug];
     if (!p || !p.status) {
       html += `<div class="choice-sub cell--empty" data-project-name="${slug}">${slug}: —</div>`;
-    } else if (p.status === 'finished' && p.validated === true) {
-      html += `<div class="choice-sub cell--pass" data-project-name="${slug}">${slug}: ${p.mark !== null ? p.mark : '✅'}</div>`;
-    } else if (p.status === 'finished' && p.validated === false) {
-      html += `<div class="choice-sub cell--fail" data-project-name="${slug}">${slug}: ${p.mark !== null ? p.mark : 'F'}</div>`;
     } else {
-      html += `<div class="choice-sub cell--progress" data-project-name="${slug}">${slug}: ●</div>`;
+      const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleDateString('ko-KR') : '';
+      const attempts = [{ date: dateStr, score: p.mark !== null ? p.mark : '?', status: p.validated ? 'pass' : 'fail' }];
+      const attemptsJson = escapeHtml(JSON.stringify(attempts));
+      const passDateAttr = p.validated ? `data-pass-date="${dateStr}"` : '';
+
+      if (p.status === 'finished' && p.validated === true) {
+        html += `<div class="choice-sub cell--pass" data-project-name="${slug}" ${passDateAttr} data-attempts="${attemptsJson}">${slug}: ${p.mark !== null ? p.mark : '✅'}</div>`;
+      } else if (p.status === 'finished' && p.validated === false) {
+        html += `<div class="choice-sub cell--fail" data-project-name="${slug}" data-attempts="${attemptsJson}">${slug}: ${p.mark !== null ? p.mark : 'F'}</div>`;
+      } else {
+        html += `<div class="choice-sub cell--progress" data-project-name="${slug}" data-attempts="${attemptsJson}">${slug}: ●</div>`;
+      }
     }
   });
   html += `</div>`;
@@ -87,17 +109,24 @@ function getCellHTMLForModule(parsed, slugs) {
     if (!p || !p.status) {
       allPass = false;
       html += `<div class="choice-sub cell--empty" data-project-name="${slug}">${slug.replace('cpp-module-0', 'CPP0')}: —</div>`;
-    } else if (p.status === 'finished' && p.validated === true) {
-      anyFinished = true;
-      html += `<div class="choice-sub cell--pass" data-project-name="${slug}">${slug.replace('cpp-module-0', 'CPP0')}: ${p.mark !== null ? p.mark : '✅'}</div>`;
-    } else if (p.status === 'finished' && p.validated === false) {
-      allPass = false;
-      anyFinished = true;
-      html += `<div class="choice-sub cell--fail" data-project-name="${slug}">${slug.replace('cpp-module-0', 'CPP0')}: ${p.mark !== null ? p.mark : 'F'}</div>`;
     } else {
-      allPass = false;
-      anyProgress = true;
-      html += `<div class="choice-sub cell--progress" data-project-name="${slug}">${slug.replace('cpp-module-0', 'CPP0')}: ●</div>`;
+      const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleDateString('ko-KR') : '';
+      const attempts = [{ date: dateStr, score: p.mark !== null ? p.mark : '?', status: p.validated ? 'pass' : 'fail' }];
+      const attemptsJson = escapeHtml(JSON.stringify(attempts));
+      const passDateAttr = p.validated ? `data-pass-date="${dateStr}"` : '';
+
+      if (p.status === 'finished' && p.validated === true) {
+        anyFinished = true;
+        html += `<div class="choice-sub cell--pass" data-project-name="${slug}" ${passDateAttr} data-attempts="${attemptsJson}">${slug.replace('cpp-module-0', 'CPP0')}: ${p.mark !== null ? p.mark : '✅'}</div>`;
+      } else if (p.status === 'finished' && p.validated === false) {
+        allPass = false;
+        anyFinished = true;
+        html += `<div class="choice-sub cell--fail" data-project-name="${slug}" data-attempts="${attemptsJson}">${slug.replace('cpp-module-0', 'CPP0')}: ${p.mark !== null ? p.mark : 'F'}</div>`;
+      } else {
+        allPass = false;
+        anyProgress = true;
+        html += `<div class="choice-sub cell--progress" data-project-name="${slug}" data-attempts="${attemptsJson}">${slug.replace('cpp-module-0', 'CPP0')}: ●</div>`;
+      }
     }
   });
   html += `</div>`;
