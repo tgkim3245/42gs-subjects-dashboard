@@ -1,23 +1,31 @@
 // data_sync.js - Handles API data synchronization, parsing, and UI rendering
 
+// Slug keys must match the exact `project.slug` returned by the 42 API
 const COL_MAP = {
-  'libft': 1, 'ft_printf': 2, 'get_next_line': 3, 'born2beroot': 4,
-  'push_swap': 5, 'exam-rank-02': 8, 'minishell': 9, 'philosophers': 10,
-  'exam-rank-03': 11, 'netpractice': 13, 'exam-rank-04': 15, 'inception': 16,
-  'exam-rank-05': 19, 'ft_transcendence': 20, 'exam-rank-06': 21
+  '42cursus-libft': 1, '42cursus-ft_printf': 2, '42cursus-get_next_line': 3, '42cursus-born2beroot': 4,
+  '42cursus-push_swap': 5, 'exam-rank-02': 8, '42cursus-minishell': 9, '42cursus-philosophers': 10,
+  'exam-rank-03': 11, '42cursus-netpractice': 13, 'exam-rank-04': 15, '42cursus-inception': 16,
+  'exam-rank-05': 19, '42cursus-ft_transcendence': 20, 'exam-rank-06': 21
 };
 
 const CHOICE_COLS = {
-  6: ['minitalk', 'pipex'],
-  7: ['so_long', 'fract-ol', 'fdf'],
-  12: ['cub3d', 'minirt'],
-  17: ['ft_irc', 'webserv']
+  6: ['42cursus-minitalk', '42cursus-pipex'],
+  7: ['42cursus-so_long', '42cursus-fract-ol', '42cursus-fdf'],
+  12: ['42cursus-cub3d', '42cursus-minirt'],
+  17: ['42cursus-ft_irc', '42cursus-webserv']
 };
 
 const MODULE_COLS = {
   14: ['cpp-module-00', 'cpp-module-01', 'cpp-module-02', 'cpp-module-03', 'cpp-module-04'],
   18: ['cpp-module-05', 'cpp-module-06', 'cpp-module-07', 'cpp-module-08', 'cpp-module-09']
 };
+
+// All slugs we care about (for slim storage filtering in worker.js)
+const TARGET_SLUGS = new Set([
+  ...Object.keys(COL_MAP),
+  ...Object.values(CHOICE_COLS).flat(),
+  ...Object.values(MODULE_COLS).flat()
+]);
 
 function parseUserData(projectsUsers) {
   const parsed = {};
@@ -208,9 +216,20 @@ function syncData() {
     
     // 2. Fetch details for each user
     if (users.length > 0) {
-      chrome.storage.local.get(['starred_cadets'], (starRes) => {
+      chrome.storage.local.get(['starred_cadets', 'parse_mode'], (starRes) => {
         const starred = starRes.starred_cadets || [];
+        const parseMode = starRes.parse_mode || 'all';
+        const SIX_MONTHS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
+
         users.forEach(user => {
+          // Skip inactive users if parse_mode is 'active'
+          if (parseMode === 'active' && user.blackholed_at) {
+            const bhDate = new Date(user.blackholed_at).getTime();
+            if (!isNaN(bhDate) && (now - bhDate > SIX_MONTHS_MS)) {
+              return; // Skip: blackholed more than 6 months ago
+            }
+          }
+
           chrome.storage.local.get([`user_data_${user.login}`], (dRes) => {
             const hasData = !!dRes[`user_data_${user.login}`];
             if (!hasData) {
@@ -234,13 +253,13 @@ window.syncData = syncData;
 
 // Listen to messages
 chrome.runtime.onMessage.addListener((msg) => {
-  console.log('[DataSync] Received message:', msg.type);
   if (msg.type === 'INDEX_COMPLETED') {
     syncData();
     renderTable();
   } else if (msg.type === 'JOB_COMPLETED') {
+    // Throttle render during bulk collection: 5 seconds
     if (window.renderTimeout) clearTimeout(window.renderTimeout);
-    window.renderTimeout = setTimeout(renderTable, 500);
+    window.renderTimeout = setTimeout(renderTable, 5000);
   } else if (msg.type === 'QUEUE_STATUS') {
     const statusMsg = document.getElementById('auth-status-msg');
     if (statusMsg && msg.payload.total > 0) {
@@ -249,12 +268,14 @@ chrome.runtime.onMessage.addListener((msg) => {
     } else if (statusMsg && msg.payload.total === 0) {
       statusMsg.textContent = `✅ 모든 데이터 최신화 완료`;
       statusMsg.className = 'auth-status success';
+      // Final render when collection is done
+      renderTable();
     }
   }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('[DataSync] DOMContentLoaded triggered');
   renderTable();
   syncData();
 });
+

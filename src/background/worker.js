@@ -86,9 +86,30 @@ async function startQueueRunner() {
       let data;
       if (job.type === 'FETCH_USER_DETAIL') {
         data = await self.ApiClient.fetch(`/v2/users/${job.user_id}/projects_users`);
-        if (data) {
+        if (data && Array.isArray(data)) {
+          // Slim storage: only keep the 21 target project records with minimal fields
+          const TARGET_SLUGS = new Set([
+            '42cursus-libft', '42cursus-ft_printf', '42cursus-get_next_line', '42cursus-born2beroot',
+            '42cursus-push_swap', '42cursus-minitalk', '42cursus-pipex',
+            '42cursus-so_long', '42cursus-fract-ol', '42cursus-fdf',
+            'exam-rank-02', '42cursus-minishell', '42cursus-philosophers', 'exam-rank-03',
+            '42cursus-cub3d', '42cursus-minirt', '42cursus-netpractice',
+            'cpp-module-00', 'cpp-module-01', 'cpp-module-02', 'cpp-module-03', 'cpp-module-04',
+            'exam-rank-04', '42cursus-inception', '42cursus-ft_irc', '42cursus-webserv',
+            'cpp-module-05', 'cpp-module-06', 'cpp-module-07', 'cpp-module-08', 'cpp-module-09',
+            'exam-rank-05', '42cursus-ft_transcendence', 'exam-rank-06'
+          ]);
+          const slimData = data
+            .filter(pu => pu.project && TARGET_SLUGS.has(pu.project.slug))
+            .map(pu => ({
+              project: { slug: pu.project.slug },
+              status: pu.status,
+              'validated?': pu['validated?'],
+              final_mark: pu.final_mark,
+              updated_at: pu.updated_at
+            }));
           const storageKey = `user_data_${job.login}`;
-          await new Promise(resolve => chrome.storage.local.set({ [storageKey]: data }, resolve));
+          await new Promise(resolve => chrome.storage.local.set({ [storageKey]: slimData }, resolve));
           chrome.runtime.sendMessage({ type: 'JOB_COMPLETED', payload: { login: job.login, type: job.type } }).catch(() => {});
         }
       } else if (job.type === 'FETCH_USER_INDEX') {

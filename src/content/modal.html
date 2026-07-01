@@ -18,7 +18,7 @@
       </div>
       <div class="header-right">
         <button id="settings-btn" class="icon-btn" title="설정">⚙️</button>
-        <button class="icon-btn" title="새로고침">🔄</button>
+        <button id="btn-resync" class="icon-btn" title="데이터 초기화 + 재수집">🔄</button>
         <button id="close-btn" class="icon-btn close-btn" title="닫기">❌</button>
       </div>
     </header>
@@ -48,6 +48,20 @@
         </div>
         <span id="auth-status-msg" class="auth-status">토큰 없음 (미연동)</span>
         <div id="worker-error-msg" style="color: #ff6b6b; font-size: 12px; margin-top: 4px; display: none;"></div>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-row">
+        <span class="settings-label">📊 데이터 수집 범위</span>
+        <div class="settings-options">
+          <label class="settings-radio">
+            <input type="radio" name="parse-mode" value="all" id="parse-mode-all" checked>
+            전체 수집 (모든 본과정 카뎃)
+          </label>
+          <label class="settings-radio">
+            <input type="radio" name="parse-mode" value="active" id="parse-mode-active">
+            활동 카뎃만 수집 (6개월 이상 블랙홀 유저 제외)
+          </label>
+        </div>
       </div>
       <div class="settings-divider"></div>
       <div class="settings-row" style="display: flex; justify-content: space-between; align-items: center;">

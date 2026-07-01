@@ -53,6 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const tooltipLevel = document.getElementById('tooltip-level');
   const tooltipBh = document.getElementById('tooltip-bh');
 
+  // Project Info Tooltip element references
+  const projTooltip = document.getElementById('project-tooltip');
+  const projTooltipName = document.getElementById('project-tooltip-name');
+  const projTooltipDate = document.getElementById('project-tooltip-date');
+  const projTooltipAttempts = document.getElementById('project-tooltip-attempts');
+  const projTooltipAttemptList = document.getElementById('project-tooltip-attempt-list');
+
   if (table) {
     table.addEventListener('mouseover', (e) => {
       // 1. Profile Tooltip delegation
@@ -121,7 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 projTooltipAttempts.style.display = 'none';
               }
             } catch (err) {
-              console.error('Error parsing attempts JSON', err);
               projTooltipAttempts.style.display = 'none';
             }
           } else {
@@ -148,18 +154,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     table.addEventListener('mouseout', (e) => {
-      // 1. Profile Tooltip delegation
+      // 1. Profile Tooltip: hide when leaving login cell (including when mouse leaves window)
       const loginCell = e.target.closest('.td-login');
-      if (loginCell && !loginCell.contains(e.relatedTarget)) {
+      if (loginCell && (!e.relatedTarget || !loginCell.contains(e.relatedTarget))) {
         if (tooltip) {
           tooltip.classList.remove('show');
           tooltip.style.display = 'none';
         }
       }
 
-      // 2. Project Tooltip delegation
+      // 2. Project Tooltip: hide when leaving project cell
       const projCell = e.target.closest('[data-project-name]');
-      if (projCell && !projCell.contains(e.relatedTarget)) {
+      if (projCell && (!e.relatedTarget || !projCell.contains(e.relatedTarget))) {
         if (projTooltip) {
           projTooltip.classList.remove('show');
           projTooltip.style.display = 'none';
@@ -370,6 +376,45 @@ document.addEventListener('DOMContentLoaded', () => {
           statusMsg.className = 'auth-status error';
         } finally {
           btnSaveAuth.disabled = false;
+        }
+      });
+    }
+
+    // ─── Parse Mode Persistence ──────────────────────────────────────────────
+    const parseModeAll = document.getElementById('parse-mode-all');
+    const parseModeActive = document.getElementById('parse-mode-active');
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['parse_mode'], (res) => {
+        const mode = res.parse_mode || 'all';
+        if (mode === 'active' && parseModeActive) parseModeActive.checked = true;
+        else if (parseModeAll) parseModeAll.checked = true;
+      });
+      if (parseModeAll) parseModeAll.addEventListener('change', () => { chrome.storage.local.set({ parse_mode: 'all' }); });
+      if (parseModeActive) parseModeActive.addEventListener('change', () => { chrome.storage.local.set({ parse_mode: 'active' }); });
+    }
+
+    // ─── Resync Button (Header) ──────────────────────────────────────────────
+    const btnResync = document.getElementById('btn-resync');
+    if (btnResync) {
+      btnResync.addEventListener('click', () => {
+        if (!confirm('저장된 과제 데이터를 초기화하고 현재 파싱 옵션에 맞춰 재수집합니다. 계속하시겠습니까?')) return;
+        
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+          chrome.runtime.sendMessage({ type: 'CLEAR_QUEUE' }, () => {
+            if (chrome.storage && chrome.storage.local) {
+              chrome.storage.local.get(null, (all) => {
+                const keysToRemove = Object.keys(all).filter(k => k.startsWith('user_data_') || k === 'users_index');
+                // Also clear meta timestamps so index will be re-fetched
+                keysToRemove.push('meta');
+                chrome.storage.local.remove(keysToRemove, () => {
+                  const authMsg = document.getElementById('auth-status-msg');
+                  if (authMsg) authMsg.textContent = '🔄 재수집을 시작합니다...';
+                  // Trigger syncData from data_sync.js
+                  if (typeof window.syncData === 'function') window.syncData();
+                });
+              });
+            }
+          });
         }
       });
     }

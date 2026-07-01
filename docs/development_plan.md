@@ -77,11 +77,11 @@ my-42-extension/
 
 | 항목 | 작업 내용 | 상태 |
 | :--- | :--- | :--- |
-| P1-1 | 검색 기능 JS 연결 (입력 즉시 필터링, 200ms debounce) | ⬜ |
-| P1-2 | ⭐ 관심 카뎃 탭 필터링 동작 구현 | ⬜ |
-| P1-3 | 설정 패널(⚙️) — 저장소 선택 옵션 (chrome.storage vs localStorage) | ⬜ |
-| P1-4 | starred_cadets 저장 로직을 설정 연동으로 교체 | ⬜ |
-| P1-5 | 행 정렬 기능 구현 (Login ID, 레벨, 블랙홀 날짜 헤더 클릭 정렬) | ⬜ |
+| P1-1 | 검색 기능 JS 연결 (입력 즉시 필터링, 200ms debounce) | ✅ |
+| P1-2 | ⭐ 관심 카뎃 탭 필터링 동작 구현 | ✅ |
+| P1-3 | 설정 패널(⚙️) — 저장소 선택 옵션 및 파싱 옵션 구현 | ✅ |
+| P1-4 | starred_cadets 저장 로직을 설정 연동으로 교체 | ✅ |
+| P1-5 | 행 정렬 기능 구현 (Login ID, 레벨, 블랙홀 날짜 헤더 클릭 정렬) | ✅ |
 
 ---
 
@@ -89,11 +89,11 @@ my-42-extension/
 
 | 항목 | 작업 내용 | 상태 |
 | :--- | :--- | :--- |
-| P2-1 | 설정 패널 — API UID / SECRET 입력창 추가 및 토큰 자동 발급 | ⬜ |
-| P2-2 | `api_client.js` 구현 (Rate Limit 큐 + Back-off 550ms) | ⬜ |
-| P2-3 | `worker.js` 큐 엔진 구현 (우선순위, Back-off, 큐 복원) | ⬜ |
-| P2-4 | `GET /v2/campus/55/users` 페이지네이션으로 users_index 수집 | ⬜ |
-| P2-5 | `GET /v2/users/:id/projects_users` 과제 상세 수집 | ⬜ |
+| P2-1 | 설정 패널 — API UID / SECRET 입력창 추가 및 토큰 자동 발급 | ✅ |
+| P2-2 | `api_client.js` 구현 (Rate Limit 큐 + Back-off 550ms) | ✅ |
+| P2-3 | `worker.js` 큐 엔진 구현 (우선순위, Back-off, 큐 복원) | ✅ |
+| P2-4 | `GET /v2/campus/69/users` 페이지네이션으로 users_index 수집 | ✅ |
+| P2-5 | `GET /v2/users/:id/projects_users` 과제 상세 수집 및 Slim 저장 | ✅ |
 
 ---
 
@@ -101,10 +101,10 @@ my-42-extension/
 
 | 항목 | 작업 내용 | 상태 |
 | :--- | :--- | :--- |
-| P3-1 | 테이블 렌더링을 chrome.storage 데이터 기반으로 전환 | ⬜ |
-| P3-2 | 프로그레스 바 Queue 상태 실시간 연동 | ⬜ |
-| P3-3 | 개별 행 갱신 Spinner 및 페이드인 애니메이션 | ⬜ |
-| P3-4 | 예외 상황 테스트 (429 Back-off, 토큰 만료 등) | ⬜ |
+| P3-1 | 테이블 렌더링을 chrome.storage 데이터 기반으로 전환 | ✅ |
+| P3-2 | 프로그레스 바 Queue 상태 실시간 연동 | ✅ |
+| P3-3 | 툴팁 및 이벤트 위임 버그 수정 완료 (#1~#6) | ✅ |
+| P3-4 | 예외 상황 테스트 (429 Back-off, 데이터 용량 최적화 완료) | ✅ |
 
 ---
 
