@@ -134,7 +134,7 @@ async function startQueueRunner() {
           const parsedUsers = [];
           data.forEach(rawItem => {
             if (!rawItem.user) return;
-            const avatar = rawItem.user.image?.link || rawItem.user.image_url || '';
+            const avatar = rawItem.user.image?.versions?.large || rawItem.user.image?.link || rawItem.user.image_url || '';
             parsedUsers.push({
               id: rawItem.user.id,
               login: rawItem.user.login,
