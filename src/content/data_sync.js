@@ -103,11 +103,12 @@ function getCellHTMLForModule(parsed, slugs) {
 
 function buildRowHTML(user, parsedData, isStarred) {
   let html = `<tr data-login="${user.login}" data-level="${user.level}">`;
-  const starStr = isStarred ? '⭐ ' : '';
   const avatar = "https://profile.intra.42.fr/assets/42_logo_black-684989d43d629b3c0ff6fd7e1157ee04db9bb7a73fba8ec4e01543d650a1c607.png";
+  const starChar = isStarred ? '★' : '☆';
+  const starredClass = isStarred ? 'starred' : '';
   
   html += `<td class="sticky-col td-login" data-login="${user.login}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-cohort="-">`;
-  html += `${starStr}${user.login}</td>`;
+  html += `${user.login} <span class="star-icon ${starredClass}">${starChar}</span></td>`;
   
   for (let i = 1; i <= 21; i++) {
     if (CHOICE_COLS[i]) {
@@ -167,8 +168,10 @@ function renderTable() {
         tbody.innerHTML = finalHTML;
         console.log('[DataSync] Table render completed successfully');
         
-        // Bind tooltip events manually or trigger existing logic
-        if (window.bindTooltipEvents) window.bindTooltipEvents();
+        // Update filters and sorting on the new rows
+        if (typeof window.buildCohortCheckboxes === 'function') window.buildCohortCheckboxes();
+        if (typeof window.sortTable === 'function') window.sortTable();
+        if (typeof window.updateFilters === 'function') window.updateFilters();
       } catch (err) {
         console.error('[DataSync] Error building table HTML:', err);
       }

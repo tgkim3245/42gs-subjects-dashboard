@@ -53,117 +53,119 @@ document.addEventListener('DOMContentLoaded', () => {
   const tooltipLevel = document.getElementById('tooltip-level');
   const tooltipBh = document.getElementById('tooltip-bh');
 
-  if (tooltip) {
-    document.querySelectorAll('.td-login').forEach(cell => {
-      cell.addEventListener('mouseenter', () => {
-        const login = cell.getAttribute('data-login');
-        const avatar = cell.getAttribute('data-avatar');
-        const level = cell.getAttribute('data-level');
-        const bh = cell.getAttribute('data-bh');
-        const cohort = cell.getAttribute('data-cohort');
+  const table = document.querySelector('.dashboard-table');
+  if (table) {
+    table.addEventListener('mouseover', (e) => {
+      // 1. Profile Tooltip delegation
+      const loginCell = e.target.closest('.td-login');
+      if (loginCell && !loginCell.contains(e.relatedTarget)) {
+        const login = loginCell.getAttribute('data-login');
+        const avatar = loginCell.getAttribute('data-avatar');
+        const level = loginCell.getAttribute('data-level');
+        const bh = loginCell.getAttribute('data-bh');
+        const cohort = loginCell.getAttribute('data-cohort');
 
-        tooltipAvatar.src = avatar;
-        tooltipLogin.textContent = login;
-        tooltipCohort.textContent = cohort;
-        tooltipLevel.textContent = `Level: ${level}`;
-        tooltipBh.textContent = `Blackhole: ${bh}`;
+        if (tooltip) {
+          tooltipAvatar.src = avatar;
+          tooltipLogin.textContent = login;
+          tooltipCohort.textContent = cohort;
+          tooltipLevel.textContent = `Level: ${level}`;
+          tooltipBh.textContent = `Blackhole: ${bh}`;
+          tooltip.style.display = 'flex';
 
-        tooltip.style.display = 'flex';
-        
-        // Position tooltip to the right of the Login cell
-        const rect = cell.getBoundingClientRect();
-        
-        const topPosition = rect.top + (rect.height / 2) - (tooltip.offsetHeight / 2);
-        const leftPosition = rect.right + 12;
-        
-        tooltip.style.top = `${topPosition}px`;
-        tooltip.style.left = `${leftPosition}px`;
-        
-        // Use timeout to trigger CSS transition opacity animation
-        setTimeout(() => {
-          tooltip.classList.add('show');
-        }, 10);
-      });
+          const rect = loginCell.getBoundingClientRect();
+          const topPosition = rect.top + (rect.height / 2) - (tooltip.offsetHeight / 2);
+          const leftPosition = rect.right + 12;
 
-      cell.addEventListener('mouseleave', () => {
-        tooltip.classList.remove('show');
-        tooltip.style.display = 'none';
-      });
-    });
-  }
+          tooltip.style.top = `${topPosition}px`;
+          tooltip.style.left = `${leftPosition}px`;
 
-  // Project Info Tooltip Hover Card Logic
-  const projTooltip = document.getElementById('project-tooltip');
-  const projTooltipName = document.getElementById('project-tooltip-name');
-  const projTooltipDate = document.getElementById('project-tooltip-date');
-  const projTooltipAttempts = document.getElementById('project-tooltip-attempts');
-  const projTooltipAttemptList = document.getElementById('project-tooltip-attempt-list');
-
-  if (projTooltip) {
-    document.querySelectorAll('[data-project-name]').forEach(cell => {
-      cell.addEventListener('mouseenter', () => {
-        const name = cell.getAttribute('data-project-name');
-        const passDate = cell.getAttribute('data-pass-date');
-        const attemptsJson = cell.getAttribute('data-attempts');
-
-        projTooltipName.textContent = name;
-        if (passDate) {
-          projTooltipDate.textContent = `통과일: ${passDate}`;
-          projTooltipDate.style.display = 'block';
-        } else {
-          projTooltipDate.style.display = 'none';
+          setTimeout(() => {
+            tooltip.classList.add('show');
+          }, 10);
         }
+      }
 
-        projTooltipAttemptList.innerHTML = '';
-        if (attemptsJson) {
-          try {
-            const attempts = JSON.parse(attemptsJson);
-            if (attempts && attempts.length > 0) {
-              attempts.forEach(att => {
-                const li = document.createElement('li');
-                const statusStr = att.status === 'pass' ? '통과' : '실패';
-                li.innerHTML = `
-                  <span class="attempt-index">${att.date}:</span>
-                  <span class="attempt-score">${att.score}점</span>
-                  <span class="attempt-status status--${att.status}">(${statusStr})</span>
-                `;
-                projTooltipAttemptList.appendChild(li);
-              });
-              projTooltipAttempts.style.display = 'block';
-            } else {
+      // 2. Project Tooltip delegation
+      const projCell = e.target.closest('[data-project-name]');
+      if (projCell && !projCell.contains(e.relatedTarget)) {
+        const name = projCell.getAttribute('data-project-name');
+        const passDate = projCell.getAttribute('data-pass-date');
+        const attemptsJson = projCell.getAttribute('data-attempts');
+
+        if (projTooltip) {
+          projTooltipName.textContent = name;
+          if (passDate) {
+            projTooltipDate.textContent = `통과일: ${passDate}`;
+            projTooltipDate.style.display = 'block';
+          } else {
+            projTooltipDate.style.display = 'none';
+          }
+
+          projTooltipAttemptList.innerHTML = '';
+          if (attemptsJson) {
+            try {
+              const attempts = JSON.parse(attemptsJson);
+              if (attempts && attempts.length > 0) {
+                attempts.forEach(att => {
+                  const li = document.createElement('li');
+                  const statusStr = att.status === 'pass' ? '통과' : '실패';
+                  li.innerHTML = `
+                    <span class="attempt-index">${att.date}:</span>
+                    <span class="attempt-score">${att.score}점</span>
+                    <span class="attempt-status status--${att.status}">(${statusStr})</span>
+                  `;
+                  projTooltipAttemptList.appendChild(li);
+                });
+                projTooltipAttempts.style.display = 'block';
+              } else {
+                projTooltipAttempts.style.display = 'none';
+              }
+            } catch (err) {
+              console.error('Error parsing attempts JSON', err);
               projTooltipAttempts.style.display = 'none';
             }
-          } catch (e) {
-            console.error('Error parsing attempts JSON', e);
+          } else {
             projTooltipAttempts.style.display = 'none';
           }
-        } else {
-          projTooltipAttempts.style.display = 'none';
+
+          projTooltip.style.display = 'block';
+
+          const rect = projCell.getBoundingClientRect();
+          let topPosition = rect.top - projTooltip.offsetHeight - 8;
+          if (topPosition < 0) {
+            topPosition = rect.bottom + 8;
+          }
+          const leftPosition = rect.left + (rect.width / 2) - (projTooltip.offsetWidth / 2);
+
+          projTooltip.style.top = `${topPosition + window.scrollY}px`;
+          projTooltip.style.left = `${leftPosition + window.scrollX}px`;
+
+          setTimeout(() => {
+            projTooltip.classList.add('show');
+          }, 10);
         }
+      }
+    });
 
-        projTooltip.style.display = 'block';
-
-        // Position tooltip centered above the cell
-        const rect = cell.getBoundingClientRect();
-        let topPosition = rect.top - projTooltip.offsetHeight - 8;
-        // Flip tooltip to render below the cell if it would overflow the viewport top
-        if (topPosition < 0) {
-          topPosition = rect.bottom + 8;
+    table.addEventListener('mouseout', (e) => {
+      // 1. Profile Tooltip delegation
+      const loginCell = e.target.closest('.td-login');
+      if (loginCell && !loginCell.contains(e.relatedTarget)) {
+        if (tooltip) {
+          tooltip.classList.remove('show');
+          tooltip.style.display = 'none';
         }
-        const leftPosition = rect.left + (rect.width / 2) - (projTooltip.offsetWidth / 2);
-        
-        projTooltip.style.top = `${topPosition + window.scrollY}px`;
-        projTooltip.style.left = `${leftPosition + window.scrollX}px`;
-        
-        setTimeout(() => {
-          projTooltip.classList.add('show');
-        }, 10);
-      });
+      }
 
-      cell.addEventListener('mouseleave', () => {
-        projTooltip.classList.remove('show');
-        projTooltip.style.display = 'none';
-      });
+      // 2. Project Tooltip delegation
+      const projCell = e.target.closest('[data-project-name]');
+      if (projCell && !projCell.contains(e.relatedTarget)) {
+        if (projTooltip) {
+          projTooltip.classList.remove('show');
+          projTooltip.style.display = 'none';
+        }
+      }
     });
   }
 
@@ -419,47 +421,73 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof updateFilters === 'function') updateFilters();
   }
 
-  // Inject star element
-  document.querySelectorAll('.td-login').forEach(cell => {
-    const login = cell.getAttribute('data-login');
-    if (!login) return;
+  // Click Redirects and Star Logic via Event Delegation
+  if (table) {
+    table.addEventListener('click', (e) => {
+      // 1. Star click
+      const star = e.target.closest('.star-icon');
+      if (star) {
+        e.stopPropagation();
+        const cell = star.closest('.td-login');
+        const login = cell ? cell.getAttribute('data-login') : null;
+        if (!login) return;
 
-    const star = document.createElement('span');
-    star.className = 'star-icon';
-    star.innerHTML = '☆';
-    cell.appendChild(star);
-
-    star.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isStarred = star.classList.contains('starred');
-      if (isStarred) {
-        favorites = favorites.filter(id => id !== login);
-      } else {
-        favorites.push(login);
+        const isStarred = star.classList.contains('starred');
+        if (isStarred) {
+          favorites = favorites.filter(id => id !== login);
+          star.classList.remove('starred');
+          star.innerHTML = '☆';
+        } else {
+          favorites.push(login);
+          star.classList.add('starred');
+          star.innerHTML = '★';
+        }
+        updateStarUI();
+        saveFavorites();
+        return;
       }
-      updateStarUI();
-      saveFavorites();
+
+      // 2. Profile Login click
+      const loginCell = e.target.closest('.td-login');
+      if (loginCell) {
+        const login = loginCell.getAttribute('data-login');
+        if (login) {
+          window.open(`https://profile.intra.42.fr/users/${login}`, '_blank');
+        }
+        return;
+      }
+
+      // 3. Evaluation Redirect (Score cell) click
+      const scoreCell = e.target.closest('.cell:not(.cell--choice):not(.sticky-col), .choice-sub');
+      if (scoreCell) {
+        const row = scoreCell.closest('tr');
+        const loginCell = row ? row.querySelector('.td-login') : null;
+        const login = loginCell ? loginCell.getAttribute('data-login') : null;
+
+        let slug = scoreCell.getAttribute('data-project-slug');
+        if (!slug) {
+          const name = scoreCell.getAttribute('data-project-name');
+          if (name) {
+            slug = getIntraSlug(name);
+          }
+        }
+
+        if (slug) {
+          const textVal = scoreCell.textContent.trim();
+          const hasStarted = !scoreCell.classList.contains('cell--empty') && textVal !== '—' && textVal !== '';
+          
+          if (hasStarted && login) {
+            window.open(`https://projects.intra.42.fr/users/${login}/projects/${slug}`, '_blank');
+          } else {
+            window.open(`https://projects.intra.42.fr/projects/${slug}`, '_blank');
+          }
+        }
+      }
     });
-  });
+  }
 
   // Load favorites using the backend setting
   loadStorageBackend();
-
-
-
-  // Click Login to redirect to Intra Profile Page
-  document.querySelectorAll('.td-login').forEach(cell => {
-    cell.style.cursor = 'pointer';
-    cell.addEventListener('click', (e) => {
-      // Don't redirect if we clicked the star itself
-      if (e.target.classList.contains('star-icon')) return;
-      
-      const login = cell.getAttribute('data-login');
-      if (login) {
-        window.open(`https://profile.intra.42.fr/users/${login}`, '_blank');
-      }
-    });
-  });
 
   // Central function to resolve 42 Intra project slugs correctly
   function getIntraSlug(name) {
@@ -513,42 +541,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     return slugMap[slug] || `42cursus-${slug}`;
   }
-
-  // Click Score Cell to redirect to Subject evaluation page
-  const scoreCells = document.querySelectorAll('.cell:not(.cell--choice):not(.sticky-col), .choice-sub');
-  scoreCells.forEach(cell => {
-    // Add hover visual indicator for clickability
-    cell.classList.add('clickable-cell');
-
-    cell.addEventListener('click', () => {
-      // Find login ID
-      const row = cell.closest('tr');
-      const loginCell = row ? row.querySelector('.td-login') : null;
-      const login = loginCell ? loginCell.getAttribute('data-login') : null;
-
-      // Find slug
-      let slug = cell.getAttribute('data-project-slug');
-      if (!slug) {
-        const name = cell.getAttribute('data-project-name');
-        if (name) {
-          slug = getIntraSlug(name);
-        }
-      }
-
-      if (slug) {
-        const textVal = cell.textContent.trim();
-        const hasStarted = !cell.classList.contains('cell--empty') && textVal !== '—' && textVal !== '';
-        
-        if (hasStarted && login) {
-          // Open user-specific project attempt page
-          window.open(`https://projects.intra.42.fr/users/${login}/projects/${slug}`, '_blank');
-        } else {
-          // Open general project info page
-          window.open(`https://projects.intra.42.fr/projects/${slug}`, '_blank');
-        }
-      }
-    });
-  });
 
   // State variables for filter intersection (AND logic)
   const activeProjectFilters = new Map(); // key: colIndex (number), value: state (1 = started, 2 = unstarted)
@@ -680,8 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
 
   const allCheckbox = document.getElementById('cohort-all-checkbox');
-  const tableRows = document.querySelectorAll('.dashboard-table tbody tr');
   const dynamicContainer = document.getElementById('cohort-dynamic-options');
+  const toggleBlackhole = document.getElementById('toggle-exclude-blackhole');
+  const toggleFrozen = document.getElementById('toggle-include-frozen');
 
   // Helpers to detect status
   function isBlackholed(loginCell) {
@@ -694,13 +687,106 @@ document.addEventListener('DOMContentLoaded', () => {
     return bh.includes('무기한') || bh.includes('프리즈') || bh.includes('멤버') || bh.includes('휴학');
   }
 
-  // Global function inside DOMContentLoaded
-  let updateFilters = function() {};
+  let cohortStates = {}; // Keep track of checkbox states to avoid resets on re-renders
 
-  if (dynamicContainer) {
-    // 1. Collect unique cohort values from all table rows
+  // Global function inside DOMContentLoaded
+  let updateFilters = function() {
+    // 1. Get active cohorts
+    const cohortCheckboxes = document.querySelectorAll('.cohort-checkbox');
+    const activeCohorts = Array.from(cohortCheckboxes)
+                               .filter(c => c.checked)
+                               .map(c => c.value);
+
+    // Toggles status values
+    const includeBlackhole = toggleBlackhole ? toggleBlackhole.checked : true;
+    const includeFrozen = toggleFrozen ? toggleFrozen.checked : true;
+
+    // 2. Filter Table Rows (AND Intersection: Cohort && Blackhole && Freeze && Circle && Project)
+    const currentRows = document.querySelectorAll('.dashboard-table tbody tr');
+    currentRows.forEach(row => {
+      const loginCell = row.querySelector('.td-login');
+      if (!loginCell) return;
+
+      const login = (loginCell.getAttribute('data-login') || '').toLowerCase();
+
+      // P1-1: Search filter
+      if (searchQuery && !login.includes(searchQuery)) {
+        row.style.display = 'none';
+        return;
+      }
+
+      // P1-2: Starred tab filter
+      if (activeTab === 'starred') {
+        const isFav = favorites.includes(loginCell.getAttribute('data-login') || '');
+        if (!isFav) {
+          row.style.display = 'none';
+          return;
+        }
+      }
+
+      // Blackhole check
+      if (!includeBlackhole && isBlackholed(loginCell)) {
+        row.style.display = 'none';
+        return;
+      }
+
+      // Frozen check
+      if (!includeFrozen && isFrozen(loginCell)) {
+        row.style.display = 'none';
+        return;
+      }
+
+      // Cohort match
+      const cohortVal = loginCell.getAttribute('data-cohort');
+      if (!cohortVal) {
+        row.style.display = 'none';
+        return;
+      }
+      const group = getCohortGroup(cohortVal);
+      const cohortMatch = activeCohorts.includes(group);
+
+      // Circle match
+      let circleMatch = true;
+      if (activeCircleFilter !== null) {
+        const level = parseFloat(loginCell.getAttribute('data-level') || '0');
+        const cadetCircle = getCadetCircle(level);
+        circleMatch = (cadetCircle === activeCircleFilter);
+      }
+
+      // Project match (AND intersection: must satisfy all active project filters)
+      let projectMatch = true;
+      for (const [colIndex, state] of activeProjectFilters.entries()) {
+        const isStarted = isProjectStarted(row, colIndex);
+        if (state === 1) {
+          if (!isStarted) {
+            projectMatch = false;
+            break;
+          }
+        } else if (state === 2) {
+          if (isStarted) {
+            projectMatch = false;
+            break;
+          }
+        }
+      }
+      
+      // Show row if it satisfies all active criteria (AND logic)
+      if (cohortMatch && circleMatch && projectMatch) {
+        row.style.display = 'table-row';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  };
+  window.updateFilters = updateFilters;
+
+  function buildCohortCheckboxes() {
+    if (!dynamicContainer) return;
+    
+    // 1. Collect unique cohort values from all current table rows
     const foundCohorts = new Set();
-    tableRows.forEach(row => {
+    const currentRows = document.querySelectorAll('.dashboard-table tbody tr');
+    currentRows.forEach(row => {
       const loginCell = row.querySelector('.td-login');
       if (loginCell) {
         const cohortVal = loginCell.getAttribute('data-cohort');
@@ -708,6 +794,22 @@ document.addEventListener('DOMContentLoaded', () => {
           foundCohorts.add(getCohortGroup(cohortVal));
         }
       }
+    });
+
+    // Compare found cohorts with current checkboxes to see if we need to rebuild
+    const currentCBs = document.querySelectorAll('.cohort-checkbox');
+    const currentCBValues = Array.from(currentCBs).map(cb => cb.value);
+    const cohortsChanged = foundCohorts.size !== currentCBValues.length || 
+                           Array.from(foundCohorts).some(c => !currentCBValues.includes(c));
+    
+    if (!cohortsChanged && currentCBValues.length > 0) {
+      updateFilters();
+      return;
+    }
+
+    // Save current states of existing checkboxes before rebuilding
+    currentCBs.forEach(cb => {
+      cohortStates[cb.value] = cb.checked;
     });
 
     // 2. Determine extra (unidentified) cohorts
@@ -721,7 +823,8 @@ document.addEventListener('DOMContentLoaded', () => {
     PREDEFINED_COHORTS.forEach(cohort => {
       const label = document.createElement('label');
       label.className = 'cohort-label';
-      label.innerHTML = `<input type="checkbox" value="${cohort.value}" class="cohort-checkbox" checked> ${cohort.value}`;
+      const isChecked = cohortStates[cohort.value] !== undefined ? cohortStates[cohort.value] : true;
+      label.innerHTML = `<input type="checkbox" value="${cohort.value}" class="cohort-checkbox" ${isChecked ? 'checked' : ''}> ${cohort.value}`;
       dynamicContainer.appendChild(label);
     });
 
@@ -729,27 +832,19 @@ document.addEventListener('DOMContentLoaded', () => {
     extraCohorts.forEach(cohort => {
       const label = document.createElement('label');
       label.className = 'cohort-label';
-      label.innerHTML = `<input type="checkbox" value="${cohort}" class="cohort-checkbox" checked> ${cohort}`;
+      const isChecked = cohortStates[cohort] !== undefined ? cohortStates[cohort] : true;
+      label.innerHTML = `<input type="checkbox" value="${cohort}" class="cohort-checkbox" ${isChecked ? 'checked' : ''}> ${cohort}`;
       dynamicContainer.appendChild(label);
     });
 
     // Grab cohort check elements after rendering
     const cohortCheckboxes = document.querySelectorAll('.cohort-checkbox');
 
-    // Toggle All Checkboxes
-    if (allCheckbox) {
-      allCheckbox.addEventListener('change', () => {
-        const isChecked = allCheckbox.checked;
-        cohortCheckboxes.forEach(cb => {
-          cb.checked = isChecked;
-        });
-        updateFilters();
-      });
-    }
-
-    // Individual checkbox change
+    // Individual checkbox change listener
     cohortCheckboxes.forEach(cb => {
       cb.addEventListener('change', () => {
+        cohortStates[cb.value] = cb.checked;
+        
         const allChecked = Array.from(cohortCheckboxes).every(c => c.checked);
         const noneChecked = Array.from(cohortCheckboxes).every(c => !c.checked);
         
@@ -769,107 +864,33 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Toggle check bindings
-    const toggleBlackhole = document.getElementById('toggle-exclude-blackhole');
-    const toggleFrozen = document.getElementById('toggle-include-frozen');
-
-    if (toggleBlackhole) {
-      toggleBlackhole.addEventListener('change', () => updateFilters());
-    }
-    if (toggleFrozen) {
-      toggleFrozen.addEventListener('change', () => updateFilters());
-    }
-
-    updateFilters = function() {
-      // 1. Get active cohorts
-      const activeCohorts = Array.from(cohortCheckboxes)
-                                 .filter(c => c.checked)
-                                 .map(c => c.value);
-
-      // Toggles status values
-      const includeBlackhole = toggleBlackhole ? toggleBlackhole.checked : true;
-      const includeFrozen = toggleFrozen ? toggleFrozen.checked : true;
-
-      // 2. Filter Table Rows (AND Intersection: Cohort && Blackhole && Freeze && Circle && Project)
-      tableRows.forEach(row => {
-        const loginCell = row.querySelector('.td-login');
-        if (!loginCell) return;
-
-        const login = (loginCell.getAttribute('data-login') || '').toLowerCase();
-
-        // P1-1: Search filter
-        if (searchQuery && !login.includes(searchQuery)) {
-          row.style.display = 'none';
-          return;
-        }
-
-        // P1-2: Starred tab filter
-        if (activeTab === 'starred') {
-          const isFav = favorites.includes(loginCell.getAttribute('data-login') || '');
-          if (!isFav) {
-            row.style.display = 'none';
-            return;
-          }
-        }
-
-        // Blackhole check
-        if (!includeBlackhole && isBlackholed(loginCell)) {
-          row.style.display = 'none';
-          return;
-        }
-
-        // Frozen check
-        if (!includeFrozen && isFrozen(loginCell)) {
-          row.style.display = 'none';
-          return;
-        }
-
-        // Cohort match
-        const cohortVal = loginCell.getAttribute('data-cohort');
-        if (!cohortVal) {
-          row.style.display = 'none';
-          return;
-        }
-        const group = getCohortGroup(cohortVal);
-        const cohortMatch = activeCohorts.includes(group);
-
-        // Circle match
-        let circleMatch = true;
-        if (activeCircleFilter !== null) {
-          const level = parseFloat(loginCell.getAttribute('data-level') || '0');
-          const cadetCircle = getCadetCircle(level);
-          circleMatch = (cadetCircle === activeCircleFilter);
-        }
-
-        // Project match (AND intersection: must satisfy all active project filters)
-        let projectMatch = true;
-        for (const [colIndex, state] of activeProjectFilters.entries()) {
-          const isStarted = isProjectStarted(row, colIndex);
-          if (state === 1) {
-            if (!isStarted) {
-              projectMatch = false;
-              break;
-            }
-          } else if (state === 2) {
-            if (isStarted) {
-              projectMatch = false;
-              break;
-            }
-          }
-        }
-        
-        // Show row if it satisfies all active criteria (AND logic)
-        if (cohortMatch && circleMatch && projectMatch) {
-          row.style.display = 'table-row';
-        } else {
-          row.style.display = 'none';
-        }
-      });
-    };
-    
-    // Initial run to make sure everything matches the defaults
     updateFilters();
   }
+  window.buildCohortCheckboxes = buildCohortCheckboxes;
+
+  // Toggle All Checkboxes (bind once)
+  if (allCheckbox) {
+    allCheckbox.addEventListener('change', () => {
+      const isChecked = allCheckbox.checked;
+      const cohortCheckboxes = document.querySelectorAll('.cohort-checkbox');
+      cohortCheckboxes.forEach(cb => {
+        cb.checked = isChecked;
+        cohortStates[cb.value] = isChecked;
+      });
+      updateFilters();
+    });
+  }
+
+  // Toggle check bindings (bind once)
+  if (toggleBlackhole) {
+    toggleBlackhole.addEventListener('change', () => updateFilters());
+  }
+  if (toggleFrozen) {
+    toggleFrozen.addEventListener('change', () => updateFilters());
+  }
+
+  // Initial build of checkboxes (will be empty rows initially, but shows predefined values)
+  buildCohortCheckboxes();
 
   // Project Filter Reset Button Logic
   const btnReset = document.getElementById('btn-reset-filters');
@@ -959,6 +980,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     rows.forEach(row => tbody.appendChild(row));
   }
+  window.sortTable = sortTable;
 
   // Bind sort to sticky diagonal header
   const stickyHeader = document.querySelector('.sticky-col.diagonal-header');
