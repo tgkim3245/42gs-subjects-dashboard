@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "42-subject-dashboard",
+  "version": "1.0.0",
+  "description": "Chrome Extension to track 42 Cadet progress in dashboard format.",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://api.intra.42.fr/*"
+  ],
+  "background": {
+    "service_worker": "src/background/worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.intra.42.fr/*"],
+      "js": ["src/content/injector.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/content/modal.html",
+        "src/content/modal.css",
+        "src/content/modal.js"
+      ],
+      "matches": ["*://*.intra.42.fr/*"]
+    }
+  ]
+}
