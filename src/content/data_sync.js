@@ -145,7 +145,8 @@ function buildRowHTML(user, parsedData, isStarred) {
   const starChar = isStarred ? '★' : '☆';
   const starredClass = isStarred ? 'starred' : '';
   
-  html += `<td class="sticky-col td-login" data-login="${user.login}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-cohort="-">`;
+  const cohort = user.begin_at ? user.begin_at.substring(0, 10) : '-';
+  html += `<td class="sticky-col td-login" data-login="${user.login}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-cohort="${cohort}">`;
   html += `${user.login} <span class="star-icon ${starredClass}">${starChar}</span></td>`;
   
   for (let i = 1; i <= 21; i++) {

@@ -341,7 +341,7 @@ body {
 /* (Vertical sticky offset handled by row level now) */
 
 .dashboard-table tbody tr {
-  display: table-row !important;
+  display: table-row;
   height: 60px;
   transition: background-color 0.2s ease;
 }

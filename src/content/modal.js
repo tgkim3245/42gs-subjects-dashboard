@@ -601,21 +601,27 @@ document.addEventListener('DOMContentLoaded', () => {
     return 0;
   }
 
-  // Helper to determine if project is started in a row
-  function isProjectStarted(row, colIndex) {
+  // Helper to determine if project is passed in a row
+  function isProjectPassed(row, colIndex) {
     const cell = row.querySelector(`td[data-col="${colIndex}"]`);
     if (!cell) return false;
     
     if (cell.classList.contains('cell--choice')) {
       const subs = cell.querySelectorAll('.choice-sub');
-      return Array.from(subs).some(sub => {
-        const text = sub.textContent.trim();
-        return !sub.classList.contains('cell--empty') && !text.includes('—') && text !== '';
-      });
-    } else {
-      const text = cell.textContent.trim();
-      return !cell.classList.contains('cell--empty') && text !== '—' && text !== '';
+      if (subs.length > 0) {
+        if (cell.classList.contains('cell--pass')) {
+          return true;
+        }
+        // Choice columns: minitalk/pipex (6), so_long/fract-ol/fdf (7), cub3d/minirt (12), ft_irc/webserv (17)
+        const isChoiceCol = [6, 7, 12, 17].includes(colIndex);
+        if (isChoiceCol) {
+          return Array.from(subs).some(sub => sub.classList.contains('cell--pass'));
+        }
+        return false;
+      }
     }
+    
+    return cell.classList.contains('cell--pass');
   }
 
   // Project headers click filter toggle logic (0: Reset, 1: Started, 2: Unstarted)
@@ -747,6 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Filter Table Rows (AND Intersection: Cohort && Blackhole && Freeze && Circle && Project)
     const currentRows = document.querySelectorAll('.dashboard-table tbody tr');
+    let visibleCount = 0;
     currentRows.forEach(row => {
       const loginCell = row.querySelector('.td-login');
       if (!loginCell) return;
@@ -782,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Cohort match
       const cohortVal = loginCell.getAttribute('data-cohort');
-      if (!cohortVal) {
+      if (!cohortVal || cohortVal === '-') {
         row.style.display = 'none';
         return;
       }
@@ -800,14 +807,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // Project match (AND intersection: must satisfy all active project filters)
       let projectMatch = true;
       for (const [colIndex, state] of activeProjectFilters.entries()) {
-        const isStarted = isProjectStarted(row, colIndex);
-        if (state === 1) {
-          if (!isStarted) {
+        const isPassed = isProjectPassed(row, colIndex);
+        if (state === 1) { // 1 = Green (Passed)
+          if (!isPassed) {
             projectMatch = false;
             break;
           }
-        } else if (state === 2) {
-          if (isStarted) {
+        } else if (state === 2) { // 2 = Red (Others: failed, progress, unstarted)
+          if (isPassed) {
             projectMatch = false;
             break;
           }
@@ -817,10 +824,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // Show row if it satisfies all active criteria (AND logic)
       if (cohortMatch && circleMatch && projectMatch) {
         row.style.display = 'table-row';
+        visibleCount++;
       } else {
         row.style.display = 'none';
       }
     });
+
+    const countElement = document.getElementById('visible-count');
+    if (countElement) countElement.textContent = visibleCount;
   };
   window.updateFilters = updateFilters;
 
@@ -892,14 +903,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Extra unidentified cohorts
-    extraCohorts.forEach(cohort => {
-      const label = document.createElement('label');
-      label.className = 'cohort-label';
-      const defaultChecked = !isCohort4OrLater(cohort);
-      const isChecked = cohortStates[cohort] !== undefined ? cohortStates[cohort] : defaultChecked;
-      label.innerHTML = `<input type="checkbox" value="${cohort}" class="cohort-checkbox" ${isChecked ? 'checked' : ''}> ${cohort}`;
-      dynamicContainer.appendChild(label);
-    });
+    if (extraCohorts.length > 0) {
+      const details = document.createElement('details');
+      details.className = 'extra-cohorts-dropdown';
+      details.style.marginLeft = '8px';
+      details.style.display = 'inline-block';
+      details.style.position = 'relative';
+      
+      const summary = document.createElement('summary');
+      summary.textContent = '기타 기수...';
+      summary.style.cursor = 'pointer';
+      summary.style.padding = '4px 8px';
+      summary.style.backgroundColor = 'var(--bg-elevated)';
+      summary.style.borderRadius = '4px';
+      summary.style.fontSize = '12px';
+      summary.style.userSelect = 'none';
+      
+      const dropdownContent = document.createElement('div');
+      dropdownContent.style.display = 'flex';
+      dropdownContent.style.gap = '8px';
+      dropdownContent.style.flexWrap = 'wrap';
+      dropdownContent.style.padding = '8px';
+      dropdownContent.style.marginTop = '4px';
+      dropdownContent.style.backgroundColor = 'var(--bg-surface)';
+      dropdownContent.style.border = '1px solid var(--border)';
+      dropdownContent.style.borderRadius = '4px';
+      dropdownContent.style.position = 'absolute';
+      dropdownContent.style.zIndex = '100';
+      dropdownContent.style.maxWidth = '300px';
+
+      extraCohorts.forEach(cohort => {
+        const label = document.createElement('label');
+        label.className = 'cohort-label';
+        const defaultChecked = !isCohort4OrLater(cohort);
+        const isChecked = cohortStates[cohort] !== undefined ? cohortStates[cohort] : defaultChecked;
+        label.innerHTML = `<input type="checkbox" value="${cohort}" class="cohort-checkbox" ${isChecked ? 'checked' : ''}> ${cohort}`;
+        dropdownContent.appendChild(label);
+      });
+
+      details.appendChild(summary);
+      details.appendChild(dropdownContent);
+      dynamicContainer.appendChild(details);
+    }
 
     // Grab cohort check elements after rendering
     const cohortCheckboxes = document.querySelectorAll('.cohort-checkbox');
