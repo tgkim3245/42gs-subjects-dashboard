@@ -79,15 +79,17 @@ document.addEventListener('DOMContentLoaded', () => {
           tooltipLevel.textContent = `Level: ${level}`;
           
           let bhText = bh;
-          if (isActive === 'false') {
-            bhText = '무기한 / 프리즈';
+          if (loginCell.classList.contains('row--blackhole')) {
+            bhText = '블랙홀 제적 ☠️';
+          } else if (loginCell.classList.contains('row--frozen')) {
+            bhText = '무기한 / 프리즈 ❄️';
           } else if (bh !== '멤버' && bh !== '-') {
             const d = new Date(bh);
             if (!isNaN(d.getTime())) {
               const diffMs = d.getTime() - Date.now();
               const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
               if (d.getFullYear() > 2030) {
-                bhText = '무기한 / 프리즈';
+                bhText = '무기한 / 프리즈 ❄️';
               } else {
                 bhText = `${d.toLocaleDateString()} (D${diffDays >= 0 ? '-' : '+'}${Math.abs(diffDays)})`;
               }
