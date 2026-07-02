@@ -90,6 +90,17 @@ document.addEventListener('DOMContentLoaded', () => {
             tooltip.classList.add('show');
           }, 10);
         }
+
+        // Diagnostics
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.get([`user_data_${login}`, `error_${login}`], (res) => {
+            console.log(`[Diagnostic] Hovered Cadet: ${login}`, {
+              has_data: !!res[`user_data_${login}`],
+              data_length: res[`user_data_${login}`] ? res[`user_data_${login}`].length : 0,
+              error: res[`error_${login}`] || null
+            });
+          });
+        }
       }
 
       // 2. Project Tooltip delegation
