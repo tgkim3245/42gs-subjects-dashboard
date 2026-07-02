@@ -1092,12 +1092,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ─── P1-5: Row Sorting ────────────────────────────────────────────────────
-  function parseBhDays(bhStr) {
-    // Returns Infinity for "무기한" / non-numeric, numeric days otherwise
-    if (!bhStr) return Infinity;
-    const match = bhStr.match(/(-?\d+)/);
-    if (!match) return Infinity;
-    return parseInt(match[1], 10);
+  function parseBhTimestamp(loginCell) {
+    const bhStr = loginCell.getAttribute('data-bh');
+    const isActive = loginCell.getAttribute('data-active');
+    
+    // Members or missing data
+    if (!bhStr || bhStr === '멤버' || bhStr === '-') return Infinity;
+    
+    // API explicitly says inactive (frozen/suspended)
+    if (isActive === 'false') return Infinity;
+    
+    const bhDate = new Date(bhStr).getTime();
+    if (isNaN(bhDate)) return Infinity;
+    
+    // Distant future dates usually mean frozen or unlimited
+    if (new Date(bhStr).getFullYear() > 2030) return Infinity;
+
+    return bhDate;
   }
 
   function sortTable() {
@@ -1119,9 +1130,9 @@ document.addEventListener('DOMContentLoaded', () => {
         bVal = parseFloat(bCell.getAttribute('data-level') || '0');
         return sortDir * (aVal - bVal); // desc = higher first by default
       } else if (sortKey === 'bh') {
-        aVal = parseBhDays(aCell.getAttribute('data-bh'));
-        bVal = parseBhDays(bCell.getAttribute('data-bh'));
-        // Infinity (무기한) always goes to the bottom when sorting by urgency (asc)
+        aVal = parseBhTimestamp(aCell);
+        bVal = parseBhTimestamp(bCell);
+        // Infinity (무기한/프리즈) always goes to the bottom when sorting by urgency (asc)
         if (aVal === Infinity && bVal === Infinity) return 0;
         if (aVal === Infinity) return 1;
         if (bVal === Infinity) return -1;
