@@ -1117,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (sortKey === 'level') {
         aVal = parseFloat(aCell.getAttribute('data-level') || '0');
         bVal = parseFloat(bCell.getAttribute('data-level') || '0');
-        return sortDir * (bVal - aVal); // desc = higher first by default
+        return sortDir * (aVal - bVal); // desc = higher first by default
       } else if (sortKey === 'bh') {
         aVal = parseBhDays(aCell.getAttribute('data-bh'));
         bVal = parseBhDays(bCell.getAttribute('data-bh'));
