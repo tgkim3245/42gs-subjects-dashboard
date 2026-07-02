@@ -310,9 +310,20 @@ chrome.runtime.onMessage.addListener((msg) => {
     syncData();
     renderTable();
   } else if (msg.type === 'JOB_COMPLETED') {
-    // Throttle render during bulk collection: 5 seconds
-    if (window.renderTimeout) clearTimeout(window.renderTimeout);
-    window.renderTimeout = setTimeout(renderTable, 5000);
+    // Throttle render during bulk collection: at most once every 5 seconds
+    const now = Date.now();
+    if (!window.lastRenderTime) window.lastRenderTime = 0;
+    
+    if (now - window.lastRenderTime >= 5000) {
+      renderTable();
+      window.lastRenderTime = now;
+    } else {
+      if (window.renderTimeout) clearTimeout(window.renderTimeout);
+      window.renderTimeout = setTimeout(() => {
+        renderTable();
+        window.lastRenderTime = Date.now();
+      }, 5000 - (now - window.lastRenderTime));
+    }
   } else if (msg.type === 'QUEUE_STATUS') {
     const statusMsg = document.getElementById('auth-status-msg');
     const topSubtitle = document.getElementById('sync-subtitle');
