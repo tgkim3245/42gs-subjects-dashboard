@@ -156,7 +156,7 @@ function buildRowHTML(user, parsedData, isStarred, isPending) {
     if (!isNaN(bhDate) && bhDate < Date.now()) {
       statusBadge = `<span class="badge badge--blackhole" title="블랙홀 제적">☠️</span>`;
       statusClass = 'row--blackhole';
-    } else if (isFarFuture) {
+    } else if (isFarFuture || user.is_active === false) {
       if (user.level >= 18.0) {
         statusBadge = `<span class="badge badge--member" title="Common Core 멤버 (수료)">🎓</span>`;
         statusClass = 'row--member';
@@ -181,7 +181,9 @@ function buildRowHTML(user, parsedData, isStarred, isPending) {
   if (isPending) {
     spinnerHtml = ` <span class="sync-spinner-mini" title="데이터 수집 대기 중...">🔄</span>`;
   }
-  html += `<td class="sticky-col td-login ${statusClass}" data-login="${user.login}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-cohort="${cohort}">`;
+  
+  const dataActiveStr = user.is_active !== undefined ? user.is_active : 'unknown';
+  html += `<td class="sticky-col td-login ${statusClass}" data-login="${user.login}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-active="${dataActiveStr}" data-cohort="${cohort}">`;
   html += `${statusBadge}${user.login}${spinnerHtml} <span class="star-icon ${starredClass}">${starChar}</span></td>`;
 
   for (let i = 1; i <= 21; i++) {

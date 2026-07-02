@@ -141,7 +141,8 @@ async function startQueueRunner() {
               level: rawItem.level,
               blackholed_at: rawItem.blackholed_at,
               begin_at: rawItem.begin_at,
-              avatar_url: avatar
+              avatar_url: avatar,
+              is_active: rawItem.user['active?']
             });
           });
           console.log('[Worker] Parsed Cursus 21 users count:', parsedUsers.length);

@@ -747,7 +747,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function isFrozen(loginCell) {
     const bh = loginCell.getAttribute('data-bh') || '';
+    const isActive = loginCell.getAttribute('data-active');
+    
     if (bh === '멤버' || bh === '-' || !bh) return true;
+    if (isActive === 'false') return true;
+    
     const bhDate = new Date(bh).getTime();
     if (!isNaN(bhDate)) {
       const bhYear = new Date(bh).getFullYear();
