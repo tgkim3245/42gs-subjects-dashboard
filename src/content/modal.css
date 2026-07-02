@@ -1015,7 +1015,7 @@ th.filter-active-unstarted {
 
 .settings-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 20px;
   flex-wrap: wrap;
 }
@@ -1027,12 +1027,13 @@ th.filter-active-unstarted {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
+  margin-top: 5px;
 }
 
 .settings-options {
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .settings-radio {

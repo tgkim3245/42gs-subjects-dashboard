@@ -390,9 +390,11 @@ document.addEventListener('DOMContentLoaded', () => {
                   const meta = res.meta || {};
                   meta.users_index_updated = 0;
                   chrome.storage.local.set({ meta }, () => {
-                    if (typeof window.syncData === 'function') {
-                      window.syncData();
-                    }
+                    chrome.storage.local.remove(['no_auto_fetch'], () => {
+                      if (typeof window.syncData === 'function') {
+                        window.syncData();
+                      }
+                    });
                   });
                 });
               });
@@ -436,6 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const keysToRemove = Object.keys(all).filter(k => k.startsWith('user_data_') || k === 'users_index');
                 // Also clear meta timestamps so index will be re-fetched
                 keysToRemove.push('meta');
+                keysToRemove.push('no_auto_fetch');
                 chrome.storage.local.remove(keysToRemove, () => {
                   const authMsg = document.getElementById('auth-status-msg');
                   if (authMsg) authMsg.textContent = '🔄 재수집을 시작합니다...';
@@ -462,12 +465,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (chrome.storage && chrome.storage.local) {
               chrome.storage.local.get(null, (items) => {
                 const keysToRemove = Object.keys(items).filter(key => {
-                  return !['api_uid', 'api_secret', 'api_token', 'api_token_expires'].includes(key);
+                  return !['api_uid', 'api_secret', 'api_token', 'api_token_expires', 'parse_mode', 'storage_backend'].includes(key);
                 });
 
                 chrome.storage.local.remove(keysToRemove, () => {
-                  alert('저장된 데이터가 초기화되었습니다. 페이지를 새로고침합니다.');
-                  location.reload();
+                  chrome.storage.local.set({ no_auto_fetch: true }, () => {
+                    alert('저장된 데이터가 초기화되었습니다. 페이지를 새로고침합니다.');
+                    location.reload();
+                  });
                 });
               });
             }

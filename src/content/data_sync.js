@@ -276,7 +276,11 @@ function renderTable() {
 // Queue syncing logic
 function syncData() {
   console.log('[DataSync] syncData() called');
-  chrome.storage.local.get(['users_index', 'meta'], (res) => {
+  chrome.storage.local.get(['users_index', 'meta', 'no_auto_fetch'], (res) => {
+    if (res.no_auto_fetch) {
+      console.log('[DataSync] Auto fetch is disabled via no_auto_fetch flag.');
+      return;
+    }
     const now = Date.now();
     const meta = res.meta || {};
     const users = res.users_index || [];
