@@ -740,12 +740,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Helpers to detect status
   function isBlackholed(loginCell) {
     const bh = loginCell.getAttribute('data-bh') || '';
-    return bh.includes('제적') || bh.includes('만료') || bh.includes('종료');
+    if (bh === '멤버' || !bh || bh === '-') return false;
+    const bhDate = new Date(bh).getTime();
+    return !isNaN(bhDate) && bhDate < Date.now();
   }
 
   function isFrozen(loginCell) {
     const bh = loginCell.getAttribute('data-bh') || '';
-    return bh.includes('무기한') || bh.includes('프리즈') || bh.includes('멤버') || bh.includes('휴학');
+    return bh === '멤버' || bh === '-' || !bh;
   }
 
   let cohortStates = {}; // Keep track of checkbox states to avoid resets on re-renders

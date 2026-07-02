@@ -145,13 +145,34 @@ function buildRowHTML(user, parsedData, isStarred, isPending) {
   const starChar = isStarred ? '★' : '☆';
   const starredClass = isStarred ? 'starred' : '';
 
+  // Determine user status
+  let statusBadge = '';
+  let statusClass = '';
+  
+  if (user.blackholed_at) {
+    const bhDate = new Date(user.blackholed_at).getTime();
+    if (!isNaN(bhDate) && bhDate < Date.now()) {
+      statusBadge = `<span class="badge badge--blackhole" title="블랙홀 제적">☠️</span>`;
+      statusClass = 'row--blackhole';
+    }
+  } else {
+    // blackholed_at is null
+    if (user.level >= 18.0) {
+      statusBadge = `<span class="badge badge--member" title="Common Core 멤버 (수료)">🎓</span>`;
+      statusClass = 'row--member';
+    } else {
+      statusBadge = `<span class="badge badge--frozen" title="프리즈 (휴학/무기한)">❄️</span>`;
+      statusClass = 'row--frozen';
+    }
+  }
+
   const cohort = user.begin_at ? user.begin_at.substring(0, 10) : '-';
   let spinnerHtml = '';
   if (isPending) {
     spinnerHtml = ` <span class="sync-spinner-mini" title="데이터 수집 대기 중...">🔄</span>`;
   }
-  html += `<td class="sticky-col td-login" data-login="${user.login}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-cohort="${cohort}">`;
-  html += `${user.login}${spinnerHtml} <span class="star-icon ${starredClass}">${starChar}</span></td>`;
+  html += `<td class="sticky-col td-login ${statusClass}" data-login="${user.login}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-cohort="${cohort}">`;
+  html += `${statusBadge}${user.login}${spinnerHtml} <span class="star-icon ${starredClass}">${starChar}</span></td>`;
 
   for (let i = 1; i <= 21; i++) {
     if (CHOICE_COLS[i]) {

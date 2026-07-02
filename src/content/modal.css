@@ -1155,3 +1155,29 @@ th.filter-active-unstarted {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* Status Badges in Login Cells */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  margin-right: 4px;
+  vertical-align: middle;
+  cursor: help;
+}
+
+/* Subtle styling on row states */
+.td-login.row--blackhole {
+  color: var(--text-secondary);
+  background-color: rgba(229, 115, 115, 0.05) !important;
+}
+
+.td-login.row--frozen {
+  color: var(--text-secondary);
+  background-color: rgba(79, 142, 247, 0.05) !important;
+}
+
+.td-login.row--member {
+  background-color: rgba(76, 175, 125, 0.05) !important;
+}
