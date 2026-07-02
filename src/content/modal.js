@@ -1133,22 +1133,49 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   window.sortTable = sortTable;
 
+  // Bind sort selector change event
+  const sortSelector = document.getElementById('sort-selector');
+  if (sortSelector) {
+    sortSelector.addEventListener('change', () => {
+      const val = sortSelector.value;
+      if (val === 'name_asc') {
+        sortKey = 'login';
+        sortDir = 1;
+      } else if (val === 'level_desc') {
+        sortKey = 'level';
+        sortDir = -1;
+      } else if (val === 'level_asc') {
+        sortKey = 'level';
+        sortDir = 1;
+      } else if (val === 'bh_desc') {
+        sortKey = 'bh';
+        sortDir = -1;
+      } else if (val === 'bh_asc') {
+        sortKey = 'bh';
+        sortDir = 1;
+      }
+      sortTable();
+    });
+  }
+
   // Bind sort to sticky diagonal header
   const stickyHeader = document.querySelector('.sticky-col.diagonal-header');
   if (stickyHeader) {
-    // Cycle through: login → level → bh → login ...
-    const sortCycle = ['login', 'level', 'bh'];
-    const sortLabels = { login: 'Login', level: '레벨', bh: '블랙홀' };
     stickyHeader.style.cursor = 'pointer';
-    stickyHeader.title = '클릭하여 정렬 기준 변경 (Login → 레벨 → 블랙홀)';
+    stickyHeader.title = '클릭하여 정렬 기준 변경 (레벨 내림차순 → 이름 오름차순 → 블랙홀 급한순)';
 
-    let sortCycleIdx = 1; // start at 'level'
     stickyHeader.addEventListener('click', () => {
-      sortCycleIdx = (sortCycleIdx + 1) % sortCycle.length;
-      sortKey = sortCycle[sortCycleIdx];
-      sortDir = sortKey === 'bh' ? 1 : -1; // bh: ascending (most urgent first)
-      stickyHeader.title = `정렬 기준: ${sortLabels[sortKey]} (클릭하여 변경)`;
-      sortTable();
+      if (!sortSelector) return;
+      const currentVal = sortSelector.value;
+      let nextVal = 'level_desc';
+      
+      if (currentVal === 'level_desc') nextVal = 'name_asc';
+      else if (currentVal === 'name_asc') nextVal = 'bh_asc';
+      else if (currentVal === 'bh_asc') nextVal = 'level_desc';
+      else nextVal = 'level_desc';
+      
+      sortSelector.value = nextVal;
+      sortSelector.dispatchEvent(new Event('change'));
     });
 
     // Also bind the bottom diagonal label bottom (intra_id) to toggle asc/desc
