@@ -1110,21 +1110,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ─── P1-5: Row Sorting ────────────────────────────────────────────────────
   function parseBhTimestamp(loginCell) {
+    if (loginCell.classList.contains('row--member')) return Infinity;
+    if (loginCell.classList.contains('row--frozen')) return Infinity;
+    
     const bhStr = loginCell.getAttribute('data-bh');
-    const isActive = loginCell.getAttribute('data-active');
-    
-    // Members or missing data
     if (!bhStr || bhStr === '멤버' || bhStr === '-') return Infinity;
-    
-    // API explicitly says inactive (frozen/suspended)
-    if (isActive === 'false') return Infinity;
     
     const bhDate = new Date(bhStr).getTime();
     if (isNaN(bhDate)) return Infinity;
     
-    // Distant future dates usually mean frozen or unlimited
-    if (new Date(bhStr).getFullYear() > 2030) return Infinity;
-
     return bhDate;
   }
 
