@@ -923,19 +923,22 @@ document.addEventListener('DOMContentLoaded', () => {
       dropdownContent.style.display = 'flex';
       dropdownContent.style.gap = '8px';
       dropdownContent.style.flexWrap = 'wrap';
-      dropdownContent.style.padding = '8px';
+      dropdownContent.style.padding = '12px';
       dropdownContent.style.marginTop = '4px';
       dropdownContent.style.backgroundColor = 'var(--bg-surface)';
       dropdownContent.style.border = '1px solid var(--border)';
-      dropdownContent.style.borderRadius = '4px';
+      dropdownContent.style.borderRadius = '6px';
       dropdownContent.style.position = 'absolute';
+      dropdownContent.style.right = '0';
       dropdownContent.style.zIndex = '100';
-      dropdownContent.style.maxWidth = '300px';
+      dropdownContent.style.width = '420px';
+      dropdownContent.style.maxHeight = '240px';
+      dropdownContent.style.overflowY = 'auto';
 
       extraCohorts.forEach(cohort => {
         const label = document.createElement('label');
         label.className = 'cohort-label';
-        const defaultChecked = !isCohort4OrLater(cohort);
+        const defaultChecked = false; // Default to unchecked for extra cohorts
         const isChecked = cohortStates[cohort] !== undefined ? cohortStates[cohort] : defaultChecked;
         label.innerHTML = `<input type="checkbox" value="${cohort}" class="cohort-checkbox" ${isChecked ? 'checked' : ''}> ${cohort}`;
         dropdownContent.appendChild(label);
