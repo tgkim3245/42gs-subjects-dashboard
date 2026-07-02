@@ -70,14 +70,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const level = loginCell.getAttribute('data-level');
         const bh = loginCell.getAttribute('data-bh');
         const cohort = loginCell.getAttribute('data-cohort');
+        const isActive = loginCell.getAttribute('data-active');
 
         if (tooltip) {
           tooltipAvatar.src = avatar;
           tooltipLogin.textContent = login;
           tooltipCohort.textContent = cohort;
           tooltipLevel.textContent = `Level: ${level}`;
+          
           let bhText = bh;
-          if (bh !== '멤버' && bh !== '-') {
+          if (isActive === 'false') {
+            bhText = '무기한 / 프리즈';
+          } else if (bh !== '멤버' && bh !== '-') {
             const d = new Date(bh);
             if (!isNaN(d.getTime())) {
               const diffMs = d.getTime() - Date.now();
