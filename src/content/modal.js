@@ -76,7 +76,20 @@ document.addEventListener('DOMContentLoaded', () => {
           tooltipLogin.textContent = login;
           tooltipCohort.textContent = cohort;
           tooltipLevel.textContent = `Level: ${level}`;
-          tooltipBh.textContent = `Blackhole: ${bh}`;
+          let bhText = bh;
+          if (bh !== '멤버' && bh !== '-') {
+            const d = new Date(bh);
+            if (!isNaN(d.getTime())) {
+              const diffMs = d.getTime() - Date.now();
+              const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+              if (d.getFullYear() > 2030) {
+                bhText = '무기한 / 프리즈';
+              } else {
+                bhText = `${d.toLocaleDateString()} (D${diffDays >= 0 ? '-' : '+'}${Math.abs(diffDays)})`;
+              }
+            }
+          }
+          tooltipBh.textContent = `Blackhole: ${bhText}`;
           tooltip.style.display = 'flex';
 
           const rect = loginCell.getBoundingClientRect();
