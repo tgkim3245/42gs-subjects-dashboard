@@ -151,9 +151,19 @@ function buildRowHTML(user, parsedData, isStarred, isPending) {
   
   if (user.blackholed_at) {
     const bhDate = new Date(user.blackholed_at).getTime();
+    const isFarFuture = !isNaN(bhDate) && (new Date(user.blackholed_at).getFullYear() > 2030);
+
     if (!isNaN(bhDate) && bhDate < Date.now()) {
       statusBadge = `<span class="badge badge--blackhole" title="블랙홀 제적">☠️</span>`;
       statusClass = 'row--blackhole';
+    } else if (isFarFuture) {
+      if (user.level >= 18.0) {
+        statusBadge = `<span class="badge badge--member" title="Common Core 멤버 (수료)">🎓</span>`;
+        statusClass = 'row--member';
+      } else {
+        statusBadge = `<span class="badge badge--frozen" title="프리즈 (휴학/무기한)">❄️</span>`;
+        statusClass = 'row--frozen';
+      }
     }
   } else {
     // blackholed_at is null

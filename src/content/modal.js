@@ -747,7 +747,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function isFrozen(loginCell) {
     const bh = loginCell.getAttribute('data-bh') || '';
-    return bh === '멤버' || bh === '-' || !bh;
+    if (bh === '멤버' || bh === '-' || !bh) return true;
+    const bhDate = new Date(bh).getTime();
+    if (!isNaN(bhDate)) {
+      const bhYear = new Date(bh).getFullYear();
+      if (bhYear > 2030) return true;
+    }
+    return false;
   }
 
   let cohortStates = {}; // Keep track of checkbox states to avoid resets on re-renders
