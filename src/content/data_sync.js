@@ -139,15 +139,19 @@ function getCellHTMLForModule(parsed, slugs) {
   return `<td class="cell cell--choice ${containerClass}" data-col="-">${html}</td>`;
 }
 
-function buildRowHTML(user, parsedData, isStarred) {
+function buildRowHTML(user, parsedData, isStarred, isPending) {
   let html = `<tr data-login="${user.login}" data-level="${user.level}">`;
   const avatar = user.avatar_url || "https://profile.intra.42.fr/assets/42_logo_black-684989d43d629b3c0ff6fd7e1157ee04db9bb7a73fba8ec4e01543d650a1c607.png";
   const starChar = isStarred ? '★' : '☆';
   const starredClass = isStarred ? 'starred' : '';
 
   const cohort = user.begin_at ? user.begin_at.substring(0, 10) : '-';
+  let spinnerHtml = '';
+  if (isPending) {
+    spinnerHtml = ` <span class="sync-spinner-mini" title="데이터 수집 대기 중...">🔄</span>`;
+  }
   html += `<td class="sticky-col td-login" data-login="${user.login}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-cohort="${cohort}">`;
-  html += `${user.login} <span class="star-icon ${starredClass}">${starChar}</span></td>`;
+  html += `${user.login}${spinnerHtml} <span class="star-icon ${starredClass}">${starChar}</span></td>`;
 
   for (let i = 1; i <= 21; i++) {
     if (CHOICE_COLS[i]) {
@@ -179,9 +183,10 @@ function renderTable() {
     return;
   }
 
-  chrome.storage.local.get(['users_index', 'starred_cadets'], (res) => {
+  chrome.storage.local.get(['users_index', 'starred_cadets', 'parse_mode'], (res) => {
     const users = res.users_index || [];
     const starred = res.starred_cadets || [];
+    const parseMode = res.parse_mode || 'all';
     console.log('[DataSync] users_index retrieved from storage. Count:', users.length);
 
     if (users.length === 0) {
@@ -196,12 +201,29 @@ function renderTable() {
     chrome.storage.local.get(keysToGet, (dataRes) => {
       try {
         let finalHTML = '';
+        const now = Date.now();
+        const SIX_MONTHS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
 
         users.forEach(user => {
           const rawData = dataRes[`user_data_${user.login}`];
+          
+          let isPending = false;
+          if (rawData === undefined) {
+            let isSkipped = false;
+            if (parseMode === 'active' && user.blackholed_at) {
+              const bhDate = new Date(user.blackholed_at).getTime();
+              if (!isNaN(bhDate) && (now - bhDate > SIX_MONTHS_MS)) {
+                isSkipped = true;
+              }
+            }
+            if (!isSkipped) {
+              isPending = true;
+            }
+          }
+
           const parsed = parseUserData(rawData || []);
           const isStarred = starred.includes(user.login);
-          finalHTML += buildRowHTML(user, parsed, isStarred);
+          finalHTML += buildRowHTML(user, parsed, isStarred, isPending);
         });
 
         tbody.innerHTML = finalHTML;
@@ -293,12 +315,28 @@ chrome.runtime.onMessage.addListener((msg) => {
     window.renderTimeout = setTimeout(renderTable, 5000);
   } else if (msg.type === 'QUEUE_STATUS') {
     const statusMsg = document.getElementById('auth-status-msg');
-    if (statusMsg && msg.payload.total > 0) {
-      statusMsg.textContent = `🔄 데이터 수집 중... (남은 대기열: ${msg.payload.total}개)`;
-      statusMsg.className = 'auth-status';
-    } else if (statusMsg && msg.payload.total === 0) {
-      statusMsg.textContent = `✅ 모든 데이터 최신화 완료`;
-      statusMsg.className = 'auth-status success';
+    const topSubtitle = document.getElementById('sync-subtitle');
+    
+    if (msg.payload.total > 0) {
+      const text = `🔄 수집 중 (대기열: ${msg.payload.total}개)`;
+      if (statusMsg) {
+        statusMsg.textContent = text;
+        statusMsg.className = 'auth-status';
+      }
+      if (topSubtitle) {
+        topSubtitle.textContent = text;
+        topSubtitle.style.color = 'var(--accent-blue)';
+      }
+    } else if (msg.payload.total === 0) {
+      const text = `✅ 모든 데이터 최신화 완료`;
+      if (statusMsg) {
+        statusMsg.textContent = text;
+        statusMsg.className = 'auth-status success';
+      }
+      if (topSubtitle) {
+        topSubtitle.textContent = text;
+        topSubtitle.style.color = 'var(--status-pass-text)';
+      }
       // Final render when collection is done
       renderTable();
     }

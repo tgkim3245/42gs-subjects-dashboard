@@ -1141,3 +1141,17 @@ th.filter-active-unstarted {
 .sticky-col.diagonal-header:hover {
   background: rgba(79, 142, 247, 0.06);
 }
+
+/* Mini Spinner Animation for Pending Rows */
+.sync-spinner-mini {
+  display: inline-block;
+  font-size: 10px;
+  animation: mini-spin 1.2s linear infinite;
+  margin-left: 4px;
+  color: var(--accent-blue);
+}
+
+@keyframes mini-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
