@@ -49,7 +49,10 @@ function parseUserData(projectsUsers) {
       status: pu.status,
       validated: pu['validated?'],
       mark: pu.final_mark,
-      updated_at: pu.updated_at
+      updated_at: pu.updated_at,
+      puid: pu.id,
+      original_slug: pu.project.original_slug,
+      teams: pu.teams || []
     };
   });
   return parsed;
@@ -60,17 +63,32 @@ function getCellHTMLForSingle(parsed, slug) {
   if (!p || !p.status) return `<td class="cell cell--empty" data-col="-" data-project-name="${slug}"><span class="cell__score">—</span></td>`;
 
   const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleDateString('ko-KR') : '';
-  const attempts = [{ date: dateStr, score: p.mark !== null ? p.mark : '?', status: p.validated ? 'pass' : 'fail' }];
+  
+  let attempts = [];
+  if (p.teams && p.teams.length > 0) {
+    attempts = p.teams.map(t => ({
+      date: t.updated_at ? new Date(t.updated_at).toLocaleDateString('ko-KR') : '',
+      score: t.mark !== null ? t.mark : '?',
+      status: t.validated === true ? 'pass' : (t.validated === false ? 'fail' : 'progress'),
+      users: t.users || []
+    }));
+  } else {
+    attempts = [{ date: dateStr, score: p.mark !== null ? p.mark : '?', status: p.validated ? 'pass' : 'fail' }];
+  }
+  
   const attemptsJson = escapeHtml(JSON.stringify(attempts));
   const passDateAttr = p.validated ? `data-pass-date="${dateStr}"` : '';
+  const puidAttr = p.puid ? `data-projects-users-id="${p.puid}"` : '';
+  const slugAttr = p.original_slug ? `data-project-slug="${p.original_slug}"` : '';
+  const extraAttrs = `${passDateAttr} data-attempts="${attemptsJson}" ${puidAttr} ${slugAttr}`;
 
   if (p.status === 'finished' && p.validated === true) {
-    return `<td class="cell cell--pass" data-col="-" data-project-name="${slug}" ${passDateAttr} data-attempts="${attemptsJson}"><span class="cell__score">${p.mark !== null ? p.mark : '✅'}</span></td>`;
+    return `<td class="cell cell--pass" data-col="-" data-project-name="${slug}" ${extraAttrs}><span class="cell__score">${p.mark !== null ? p.mark : '✅'}</span></td>`;
   }
   if (p.status === 'finished' && p.validated === false) {
-    return `<td class="cell cell--fail" data-col="-" data-project-name="${slug}" data-attempts="${attemptsJson}"><span class="cell__score">${p.mark !== null ? p.mark : 'F'}</span></td>`;
+    return `<td class="cell cell--fail" data-col="-" data-project-name="${slug}" ${extraAttrs}><span class="cell__score">${p.mark !== null ? p.mark : 'F'}</span></td>`;
   }
-  return `<td class="cell cell--progress" data-col="-" data-project-name="${slug}" data-attempts="${attemptsJson}"><span class="cell__score">●</span></td>`;
+  return `<td class="cell cell--progress" data-col="-" data-project-name="${slug}" ${extraAttrs}><span class="cell__score">●</span></td>`;
 }
 
 function getCellHTMLForChoice(parsed, slugs) {
@@ -81,16 +99,31 @@ function getCellHTMLForChoice(parsed, slugs) {
       html += `<div class="choice-sub cell--empty" data-project-name="${slug}">${slug}: —</div>`;
     } else {
       const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleDateString('ko-KR') : '';
-      const attempts = [{ date: dateStr, score: p.mark !== null ? p.mark : '?', status: p.validated ? 'pass' : 'fail' }];
+      
+      let attempts = [];
+      if (p.teams && p.teams.length > 0) {
+        attempts = p.teams.map(t => ({
+          date: t.updated_at ? new Date(t.updated_at).toLocaleDateString('ko-KR') : '',
+          score: t.mark !== null ? t.mark : '?',
+          status: t.validated === true ? 'pass' : (t.validated === false ? 'fail' : 'progress'),
+          users: t.users || []
+        }));
+      } else {
+        attempts = [{ date: dateStr, score: p.mark !== null ? p.mark : '?', status: p.validated ? 'pass' : 'fail' }];
+      }
+      
       const attemptsJson = escapeHtml(JSON.stringify(attempts));
       const passDateAttr = p.validated ? `data-pass-date="${dateStr}"` : '';
+      const puidAttr = p.puid ? `data-projects-users-id="${p.puid}"` : '';
+      const slugAttr = p.original_slug ? `data-project-slug="${p.original_slug}"` : '';
+      const extraAttrs = `${passDateAttr} data-attempts="${attemptsJson}" ${puidAttr} ${slugAttr}`;
 
       if (p.status === 'finished' && p.validated === true) {
-        html += `<div class="choice-sub cell--pass" data-project-name="${slug}" ${passDateAttr} data-attempts="${attemptsJson}">${slug}: ${p.mark !== null ? p.mark : '✅'}</div>`;
+        html += `<div class="choice-sub cell--pass" data-project-name="${slug}" ${extraAttrs}>${slug}: ${p.mark !== null ? p.mark : '✅'}</div>`;
       } else if (p.status === 'finished' && p.validated === false) {
-        html += `<div class="choice-sub cell--fail" data-project-name="${slug}" data-attempts="${attemptsJson}">${slug}: ${p.mark !== null ? p.mark : 'F'}</div>`;
+        html += `<div class="choice-sub cell--fail" data-project-name="${slug}" ${extraAttrs}>${slug}: ${p.mark !== null ? p.mark : 'F'}</div>`;
       } else {
-        html += `<div class="choice-sub cell--progress" data-project-name="${slug}" data-attempts="${attemptsJson}">${slug}: ●</div>`;
+        html += `<div class="choice-sub cell--progress" data-project-name="${slug}" ${extraAttrs}>${slug}: ●</div>`;
       }
     }
   });
@@ -111,21 +144,36 @@ function getCellHTMLForModule(parsed, slugs) {
       html += `<div class="choice-sub cell--empty" data-project-name="${slug}">${slug.replace('cpp-module-0', 'CPP0')}: —</div>`;
     } else {
       const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleDateString('ko-KR') : '';
-      const attempts = [{ date: dateStr, score: p.mark !== null ? p.mark : '?', status: p.validated ? 'pass' : 'fail' }];
+      
+      let attempts = [];
+      if (p.teams && p.teams.length > 0) {
+        attempts = p.teams.map(t => ({
+          date: t.updated_at ? new Date(t.updated_at).toLocaleDateString('ko-KR') : '',
+          score: t.mark !== null ? t.mark : '?',
+          status: t.validated === true ? 'pass' : (t.validated === false ? 'fail' : 'progress'),
+          users: t.users || []
+        }));
+      } else {
+        attempts = [{ date: dateStr, score: p.mark !== null ? p.mark : '?', status: p.validated ? 'pass' : 'fail' }];
+      }
+      
       const attemptsJson = escapeHtml(JSON.stringify(attempts));
       const passDateAttr = p.validated ? `data-pass-date="${dateStr}"` : '';
+      const puidAttr = p.puid ? `data-projects-users-id="${p.puid}"` : '';
+      const slugAttr = p.original_slug ? `data-project-slug="${p.original_slug}"` : '';
+      const extraAttrs = `${passDateAttr} data-attempts="${attemptsJson}" ${puidAttr} ${slugAttr}`;
 
       if (p.status === 'finished' && p.validated === true) {
         anyFinished = true;
-        html += `<div class="choice-sub cell--pass" data-project-name="${slug}" ${passDateAttr} data-attempts="${attemptsJson}">${slug.replace('cpp-module-0', 'CPP0')}: ${p.mark !== null ? p.mark : '✅'}</div>`;
+        html += `<div class="choice-sub cell--pass" data-project-name="${slug}" ${extraAttrs}>${slug.replace('cpp-module-0', 'CPP0')}: ${p.mark !== null ? p.mark : '✅'}</div>`;
       } else if (p.status === 'finished' && p.validated === false) {
         allPass = false;
         anyFinished = true;
-        html += `<div class="choice-sub cell--fail" data-project-name="${slug}" data-attempts="${attemptsJson}">${slug.replace('cpp-module-0', 'CPP0')}: ${p.mark !== null ? p.mark : 'F'}</div>`;
+        html += `<div class="choice-sub cell--fail" data-project-name="${slug}" ${extraAttrs}>${slug.replace('cpp-module-0', 'CPP0')}: ${p.mark !== null ? p.mark : 'F'}</div>`;
       } else {
         allPass = false;
         anyProgress = true;
-        html += `<div class="choice-sub cell--progress" data-project-name="${slug}" data-attempts="${attemptsJson}">${slug.replace('cpp-module-0', 'CPP0')}: ●</div>`;
+        html += `<div class="choice-sub cell--progress" data-project-name="${slug}" ${extraAttrs}>${slug.replace('cpp-module-0', 'CPP0')}: ●</div>`;
       }
     }
   });
@@ -149,25 +197,36 @@ function buildRowHTML(user, parsedData, isStarred, isPending) {
   let statusBadge = '';
   let statusClass = '';
   
-  if (user.blackholed_at) {
+  // Determine if the user has passed the final common core project
+  const passedCore = parsedData && parsedData['ft_transcendence'] && parsedData['ft_transcendence'].status === 'finished' && parsedData['ft_transcendence'].validated === true;
+  const isMember = user.is_alumni || passedCore;
+
+  if (user.is_staff) {
+    statusBadge = `<span class="badge badge--staff" title="보칼/스태프">🦅</span>`;
+    statusClass = 'row--staff';
+  } else if (user.blackholed_at) {
     const bhDate = new Date(user.blackholed_at).getTime();
     const isFarFuture = !isNaN(bhDate) && (new Date(user.blackholed_at).getFullYear() > 2030);
 
     if (!isNaN(bhDate) && bhDate < Date.now()) {
       statusBadge = `<span class="badge badge--blackhole" title="블랙홀 제적">☠️</span>`;
       statusClass = 'row--blackhole';
+    } else if (user.is_alumni) {
+      statusBadge = `<span class="badge badge--member" title="알룸나이 (졸업)">🎓</span>`;
+      statusClass = 'row--member';
+    } else if (passedCore) {
+      statusBadge = `<span class="badge badge--member" title="Common Core 멤버 (수료)">🎓</span>`;
+      statusClass = 'row--member';
     } else if (isFarFuture || user.is_active === false) {
-      if (user.level >= 18.0) {
-        statusBadge = `<span class="badge badge--member" title="Common Core 멤버 (수료)">🎓</span>`;
-        statusClass = 'row--member';
-      } else {
-        statusBadge = `<span class="badge badge--frozen" title="프리즈 (휴학/무기한)">❄️</span>`;
-        statusClass = 'row--frozen';
-      }
+      statusBadge = `<span class="badge badge--frozen" title="프리즈 (휴학/무기한)">❄️</span>`;
+      statusClass = 'row--frozen';
     }
   } else {
     // blackholed_at is null
-    if (user.level >= 18.0) {
+    if (user.is_alumni) {
+      statusBadge = `<span class="badge badge--member" title="알룸나이 (졸업)">🎓</span>`;
+      statusClass = 'row--member';
+    } else if (passedCore) {
       statusBadge = `<span class="badge badge--member" title="Common Core 멤버 (수료)">🎓</span>`;
       statusClass = 'row--member';
     } else {
@@ -183,7 +242,7 @@ function buildRowHTML(user, parsedData, isStarred, isPending) {
   }
   
   const dataActiveStr = user.is_active !== undefined ? user.is_active : 'unknown';
-  html += `<td class="sticky-col td-login ${statusClass}" data-login="${user.login}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-active="${dataActiveStr}" data-cohort="${cohort}">`;
+  html += `<td class="sticky-col td-login ${statusClass}" data-login="${user.login}" data-id="${user.id}" data-avatar="${avatar}" data-level="${user.level}" data-bh="${user.blackholed_at || '멤버'}" data-active="${dataActiveStr}" data-cohort="${cohort}">`;
   html += `${statusBadge}${user.login}${spinnerHtml} <span class="star-icon ${starredClass}">${starChar}</span></td>`;
 
   for (let i = 1; i <= 21; i++) {
@@ -288,6 +347,11 @@ function syncData() {
     // 1. Fetch index if older than 24h or empty
     if (users.length === 0 || !meta.users_index_updated || (now - meta.users_index_updated > 86400000)) {
       console.log('[DataSync] Index empty or expired. Triggering FETCH_USER_INDEX...');
+      const statusMsg = document.getElementById('auth-status-msg');
+      if (statusMsg) {
+        statusMsg.textContent = '🔄 유저 목록을 수집 중입니다...';
+        statusMsg.className = 'auth-status';
+      }
       chrome.runtime.sendMessage({
         type: 'ENQUEUE_JOB',
         payload: {
@@ -365,7 +429,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     const statusMsg = document.getElementById('auth-status-msg');
     const topSubtitle = document.getElementById('sync-subtitle');
     
-    if (msg.payload.total > 0) {
+    if (!msg.payload.is_completed) {
       const text = `🔄 수집 중 (대기열: ${msg.payload.total}개)`;
       if (statusMsg) {
         statusMsg.textContent = text;
@@ -375,7 +439,7 @@ chrome.runtime.onMessage.addListener((msg) => {
         topSubtitle.textContent = text;
         topSubtitle.style.color = 'var(--accent-blue)';
       }
-    } else if (msg.payload.total === 0) {
+    } else {
       const text = `✅ 모든 데이터 최신화 완료`;
       if (statusMsg) {
         statusMsg.textContent = text;

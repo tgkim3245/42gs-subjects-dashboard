@@ -11,11 +11,13 @@ let jobQueue = [];
 let isRunning = false;
 let isPaused = false;
 let pauseTimeout = null;
+let batchTotal = 0;
 
 // Load persisted queue from storage on boot
 chrome.storage.local.get(['jobQueue'], (res) => {
   if (res.jobQueue && Array.isArray(res.jobQueue)) {
     jobQueue = res.jobQueue;
+    batchTotal = jobQueue.length;
     if (jobQueue.length > 0) {
       console.log(`[Worker] Restored ${jobQueue.length} jobs from storage.`);
       startQueueRunner();
@@ -33,6 +35,7 @@ function enqueueJob(job) {
   const isDuplicate = jobQueue.some(j => j.login === job.login && j.type === job.type);
   if (!isDuplicate) {
     jobQueue.push(job);
+    if (jobQueue.length > batchTotal) batchTotal = jobQueue.length;
     persistQueue();
     startQueueRunner();
   }
@@ -47,12 +50,14 @@ function getHighestPriorityJobIndex() {
   return 0;
 }
 
-function broadcastStatus(login) {
+function broadcastStatus(login, isCompleted = false) {
   chrome.runtime.sendMessage({
     type: 'QUEUE_STATUS',
     payload: {
       total: jobQueue.length,
-      current_login: login
+      batch_total: batchTotal,
+      current_login: login,
+      is_completed: isCompleted
     }
   }).catch(() => { /* Ignore errors if popup is closed */ });
 }
@@ -71,7 +76,7 @@ async function startQueueRunner() {
     if (jobQueue.length === 0) {
       isRunning = false;
       console.log('[Worker] Queue empty. Runner stopped.');
-      broadcastStatus(null);
+      broadcastStatus(null, true);
       break;
     }
 
@@ -104,12 +109,30 @@ async function startQueueRunner() {
             if (!pu.project || !pu.project.slug) return;
             const cleanSlug = pu.project.slug.toLowerCase().replace(/^42cursus-/, '');
             if (TARGET_SLUGS.has(cleanSlug)) {
+              let savedTeams = [];
+              if (pu.teams && Array.isArray(pu.teams)) {
+                savedTeams = pu.teams.map(t => {
+                  let teamMembers = [];
+                  if (t.users && Array.isArray(t.users)) {
+                    teamMembers = t.users.map(u => ({ login: u.login, leader: u.leader || false }));
+                  }
+                  return {
+                    mark: t.final_mark,
+                    validated: t['validated?'],
+                    updated_at: t.updated_at || t.created_at,
+                    users: teamMembers
+                  };
+                });
+              }
+              
               slimData.push({
-                project: { slug: cleanSlug },
+                id: pu.id,
+                project: { slug: cleanSlug, original_slug: pu.project.slug },
                 status: pu.status,
                 'validated?': pu['validated?'],
                 final_mark: pu.final_mark,
-                updated_at: pu.updated_at
+                updated_at: pu.updated_at,
+                teams: savedTeams
               });
             }
           });
@@ -142,7 +165,9 @@ async function startQueueRunner() {
               blackholed_at: rawItem.blackholed_at,
               begin_at: rawItem.begin_at,
               avatar_url: avatar,
-              is_active: rawItem.user['active?']
+              is_active: rawItem.user['active?'],
+              is_alumni: rawItem.user['alumni?'],
+              is_staff: rawItem.user['staff?']
             });
           });
           console.log('[Worker] Parsed Cursus 21 users count:', parsedUsers.length);
@@ -179,13 +204,14 @@ async function startQueueRunner() {
       await new Promise(r => setTimeout(r, INTERVAL_MS));
 
     } catch (error) {
-      if (error.status === 429 || error.status >= 500) {
+      const isNetworkError = error instanceof TypeError || (error.message && error.message.includes('Failed to fetch'));
+      if (error.status === 429 || error.status >= 500 || isNetworkError) {
         if (job.retries < MAX_RETRIES) {
           job.retries += 1;
           const jitter = Math.floor(Math.random() * 500);
           const backoffDelay = BASE_DELAY * Math.pow(2, job.retries) + jitter;
 
-          console.warn(`[Worker] API Error ${error.status}. Retrying job ${job.id} (${job.retries}/${MAX_RETRIES}) after ${backoffDelay}ms`);
+          console.warn(`[Worker] API Error ${error.status || 'NETWORK'}. Retrying job ${job.id} (${job.retries}/${MAX_RETRIES}) after ${backoffDelay}ms`);
 
           // Re-insert job
           jobQueue.push(job);
@@ -249,11 +275,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // async response
   } else if (message.type === 'CLEAR_QUEUE') {
     jobQueue = [];
+    batchTotal = 0;
     persistQueue();
     isRunning = false; // stop the loop
     broadcastStatus(null);
     sendResponse({ success: true });
     return true;
+  } else if (message.type === 'FETCH_USER_LOCATION') {
+    const target = message.payload.userId || message.payload.login;
+    self.ApiClient.fetch(`/v2/users/${target}/locations?page=1&per_page=1`)
+      .then(data => sendResponse({ success: true, data }))
+      .catch(err => sendResponse({ success: false, error: String(err) }));
+    return true; // async response
   }
   return true; // async response
 });

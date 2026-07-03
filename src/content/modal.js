@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let sortKey = 'level';         // 'login' | 'level' | 'bh'
   let sortDir = -1;              // -1 = desc, 1 = asc
   let storageBackend = 'chrome'; // 'chrome' | 'local'
+  const locationCache = {};      // cache for live location queries: { login: { html: '...', timestamp: Date.now() } }
 
   // ─── Close Button ─────────────────────────────────────────────────────────
   const closeBtn = document.getElementById('close-btn');
@@ -52,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tooltipCohort = document.getElementById('tooltip-cohort');
   const tooltipLevel = document.getElementById('tooltip-level');
   const tooltipBh = document.getElementById('tooltip-bh');
+  const tooltipLocation = document.getElementById('tooltip-location');
 
   // Project Info Tooltip element references
   const projTooltip = document.getElementById('project-tooltip');
@@ -77,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
           tooltipLogin.textContent = login;
           tooltipCohort.textContent = cohort;
           tooltipLevel.textContent = `Level: ${level}`;
-          
+
           let bhText = bh;
           if (loginCell.classList.contains('row--blackhole')) {
             bhText = '블랙홀 제적 ☠️';
@@ -97,6 +99,68 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           tooltipBh.textContent = `Blackhole: ${bhText}`;
           tooltip.style.display = 'flex';
+
+          // Live location query with 1-min cache
+          const userId = loginCell.getAttribute('data-id');
+          if (tooltipLocation) {
+            tooltipLocation.innerHTML = '불러오는 중...';
+
+            const nowMs = Date.now();
+            if (locationCache[login] && (nowMs - locationCache[login].timestamp < 60000)) {
+              tooltipLocation.innerHTML = locationCache[login].html;
+            } else if (userId) {
+              chrome.runtime.sendMessage({
+                type: 'FETCH_USER_LOCATION',
+                payload: { userId }
+              }, (response) => {
+                if (chrome.runtime.lastError) {
+                  console.error('[Dashboard Modal] Error sending message:', chrome.runtime.lastError);
+                  if (tooltipLogin.textContent === login) {
+                    tooltipLocation.innerHTML = '조회 실패 (연동 확인)';
+                  }
+                  return;
+                }
+                if (response && response.success) {
+                  const locData = response.data;
+                  let html = '접속 기록 없음';
+                  if (locData && locData.length > 0) {
+                    const lastLoc = locData[0];
+                    if (lastLoc.end_at === null) {
+                      html = `<span class="location-active">🟢 ${lastLoc.host} (접속 중)</span>`;
+                    } else {
+                      const logoutDate = new Date(lastLoc.end_at);
+                      const formattedDate = isNaN(logoutDate.getTime()) ? lastLoc.end_at : logoutDate.toLocaleString('ko-KR', {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      });
+                      html = `<span class="location-inactive">🔴 미접속 (최근: ${formattedDate} @ ${lastLoc.host})</span>`;
+                    }
+                  }
+                  locationCache[login] = {
+                    html: html,
+                    timestamp: Date.now()
+                  };
+                  // Make sure the tooltip is still showing the same user
+                  if (tooltipLogin.textContent === login) {
+                    tooltipLocation.innerHTML = html;
+                    // Recalculate top position to center it as height may have changed
+                    const rect = loginCell.getBoundingClientRect();
+                    const topPosition = rect.top + (rect.height / 2) - (tooltip.offsetHeight / 2);
+                    tooltip.style.top = `${topPosition}px`;
+                  }
+                } else {
+                  if (tooltipLogin.textContent === login) {
+                    tooltipLocation.innerHTML = '조회 실패';
+                  }
+                }
+              });
+            } else {
+              tooltipLocation.innerHTML = 'ID 없음';
+            }
+          }
 
           const rect = loginCell.getBoundingClientRect();
           const topPosition = rect.top + (rect.height / 2) - (tooltip.offsetHeight / 2);
@@ -145,11 +209,26 @@ document.addEventListener('DOMContentLoaded', () => {
               if (attempts && attempts.length > 0) {
                 attempts.forEach(att => {
                   const li = document.createElement('li');
-                  const statusStr = att.status === 'pass' ? '통과' : '실패';
+                  let statusStr = '실패';
+                  if (att.status === 'pass') statusStr = '통과';
+                  else if (att.status === 'progress') statusStr = '진행중';
+
+                  let teamHtml = '';
+                  if (att.users && att.users.length > 1) {
+                    const formattedUsers = att.users.map(u => {
+                      if (typeof u === 'string') return u;
+                      return u.leader ? `${u.login} 👑` : u.login;
+                    });
+                    teamHtml = `<div class="attempt-team">팀원: ${formattedUsers.join(', ')}</div>`;
+                  }
+
                   li.innerHTML = `
-                    <span class="attempt-index">${att.date}:</span>
-                    <span class="attempt-score">${att.score}점</span>
-                    <span class="attempt-status status--${att.status}">(${statusStr})</span>
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                      <span class="attempt-index">${att.date}:</span>
+                      <span class="attempt-score">${att.score === '?' ? '-' : att.score}점</span>
+                      <span class="attempt-status status--${att.status}">(${statusStr})</span>
+                    </div>
+                    ${teamHtml}
                   `;
                   projTooltipAttemptList.appendChild(li);
                 });
@@ -225,12 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function saveFavorites() {
     const data = JSON.stringify(favorites);
     if (storageBackend === 'local') {
-      try { localStorage.setItem('starred_cadets', data); } catch (e) {}
+      try { localStorage.setItem('starred_cadets', data); } catch (e) { }
     } else {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ starred_cadets: favorites });
       } else {
-        try { localStorage.setItem('starred_cadets', data); } catch (e) {}
+        try { localStorage.setItem('starred_cadets', data); } catch (e) { }
       }
     }
   }
@@ -240,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const stored = localStorage.getItem('starred_cadets');
         if (stored) favorites = JSON.parse(stored);
-      } catch (e) {}
+      } catch (e) { }
       updateStarUI();
     } else {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -252,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           const stored = localStorage.getItem('starred_cadets');
           if (stored) favorites = JSON.parse(stored);
-        } catch (e) {}
+        } catch (e) { }
         updateStarUI();
       }
     }
@@ -261,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─── P1-3 & P2-1: Settings Panel & API Auth ───────────────────────────────
   const settingsBtn = document.getElementById('settings-btn');
   const settingsPanel = document.getElementById('settings-panel');
-  
+
   if (settingsBtn && settingsPanel) {
     settingsBtn.addEventListener('click', () => {
       const hidden = settingsPanel.style.display === 'none';
@@ -349,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSaveAuth.disabled = true;
         statusMsg.textContent = '⏳ 토큰 발급 중...';
         statusMsg.className = 'auth-status';
-        
+
         // Clear previous error
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
           chrome.storage.local.remove(['last_worker_error']);
@@ -384,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
               }, () => {
                 statusMsg.textContent = '✅ 연동 완료 (토큰 보유)';
                 statusMsg.className = 'auth-status success';
-                
+
                 // Reset index update time to force refetch, and trigger syncData
                 chrome.storage.local.get(['meta'], (res) => {
                   const meta = res.meta || {};
@@ -430,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnResync) {
       btnResync.addEventListener('click', () => {
         if (!confirm('저장된 과제 데이터를 초기화하고 현재 파싱 옵션에 맞춰 재수집합니다. 계속하시겠습니까?')) return;
-        
+
         if (typeof chrome !== 'undefined' && chrome.runtime) {
           chrome.runtime.sendMessage({ type: 'CLEAR_QUEUE' }, () => {
             if (chrome.storage && chrome.storage.local) {
@@ -554,8 +633,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (slug) {
           const textVal = scoreCell.textContent.trim();
           const hasStarted = !scoreCell.classList.contains('cell--empty') && textVal !== '—' && textVal !== '';
-          
-          if (hasStarted && login) {
+          const puid = scoreCell.getAttribute('data-projects-users-id');
+
+          if (hasStarted && puid) {
+            window.open(`https://projects.intra.42.fr/projects/${slug}/projects_users/${puid}`, '_blank');
+          } else if (hasStarted && login) {
             window.open(`https://projects.intra.42.fr/users/${login}/projects/${slug}`, '_blank');
           } else {
             window.open(`https://projects.intra.42.fr/projects/${slug}`, '_blank');
@@ -571,36 +653,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // Central function to resolve 42 Intra project slugs correctly
   function getIntraSlug(name) {
     if (!name) return '';
-    
+
     // Lowercase, trim, and handle newlines (split by newline and use first project name)
     let slug = name.split('\n')[0].trim().toLowerCase();
-    
+
     // Remove special characters except alphanumeric, hyphen, underscore
     slug = slug.replace(/[^a-z0-9\s-_]/g, '');
-    
+
     // Handle specific overrides for CPP Modules
     if (slug.includes('cpp-module') || slug.includes('cpp0') || (slug.startsWith('cpp') && slug !== 'cpp')) {
       const match = slug.match(/\d+/);
       const num = match ? match[0].padStart(2, '0') : '00';
       return `cpp-module-${num}`;
     }
-    
+
     // Handle specific overrides for Exam Rank
     if (slug.includes('exam-rank') || slug.includes('exam_rank')) {
       const match = slug.match(/\d+/);
       const num = match ? match[0].padStart(2, '0') : '02';
       return `exam-rank-${num}`;
     }
-    
+
     // Standard spaces to underscore replacement
     slug = slug.replace(/\s+/g, '_');
-    
+
     // Standard mapping table for all core curriculum projects on 42 Intra
     const slugMap = {
       'libft': '42cursus-libft',
       'ft_printf': '42cursus-ft_printf',
       'get_next_line': '42cursus-get_next_line',
-      'born2beroot': '42cursus-born2beroot',
+      'born2beroot': 'born2beroot',
       'push_swap': '42cursus-push_swap',
       'minitalk': '42cursus-minitalk',
       'pipex': '42cursus-pipex',
@@ -611,13 +693,13 @@ document.addEventListener('DOMContentLoaded', () => {
       'philosophers': '42cursus-philosophers',
       'cub3d': '42cursus-cub3d',
       'minirt': '42cursus-minirt',
-      'netpractice': '42cursus-netpractice',
+      'netpractice': 'netpractice',
       'inception': '42cursus-inception',
       'ft_irc': '42cursus-ft_irc',
       'webserv': '42cursus-webserv',
       'ft_transcendence': '42cursus-ft_transcendence'
     };
-    
+
     return slugMap[slug] || `42cursus-${slug}`;
   }
 
@@ -640,7 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function isProjectPassed(row, colIndex) {
     const cell = row.querySelector(`td[data-col="${colIndex}"]`);
     if (!cell) return false;
-    
+
     if (cell.classList.contains('cell--choice')) {
       const subs = cell.querySelectorAll('.choice-sub');
       if (subs.length > 0) {
@@ -655,7 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
       }
     }
-    
+
     return cell.classList.contains('cell--pass');
   }
 
@@ -663,15 +745,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const projectHeaders = document.querySelectorAll('.dashboard-table thead tr:last-child th:not(.sticky-col)');
   projectHeaders.forEach(th => {
     th.style.cursor = 'pointer';
-    
+
     th.addEventListener('click', () => {
       const colIndex = parseInt(th.getAttribute('data-col'));
-      
+
       // Read current state from dataset
       let currentState = parseInt(th.dataset.filterState || '0');
       currentState = (currentState + 1) % 3;
       th.dataset.filterState = currentState.toString();
-      
+
       // Update visual styles
       th.classList.remove('filter-active-started', 'filter-active-unstarted');
       if (currentState === 1) {
@@ -683,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         activeProjectFilters.delete(colIndex);
       }
-      
+
       // Trigger global filter update
       if (typeof updateFilters === 'function') {
         updateFilters();
@@ -695,25 +777,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const circleHeaders = document.querySelectorAll('.circle-group-header');
   circleHeaders.forEach(th => {
     th.style.cursor = 'pointer';
-    
+
     th.addEventListener('click', () => {
       const circleText = th.textContent.trim();
       const circleNum = parseInt(circleText.replace(/[^0-9]/g, ''));
-      
+
       const isAlreadyActive = th.classList.contains('circle-active');
-      
+
       // Reset all circle headers
       circleHeaders.forEach(otherTh => {
         otherTh.classList.remove('circle-active');
       });
-      
+
       if (isAlreadyActive) {
         activeCircleFilter = null;
       } else {
         th.classList.add('circle-active');
         activeCircleFilter = circleNum;
       }
-      
+
       // Trigger global filter update
       if (typeof updateFilters === 'function') {
         updateFilters();
@@ -724,17 +806,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Cohort Parsing and Dynamic Filtering Logic
   function getCohortGroup(cohortStr) {
     if (!cohortStr) return '미식별';
-    
+
     // Normalize spaces and lowercase
     const norm = cohortStr.replace(/\s+/g, '').toLowerCase();
-    
+
     if (norm.includes('1기') || norm.includes('2024-02-26')) return '1기';
     if (norm.includes('2기') || norm.includes('2024-10-01')) return '2기';
     if (norm.includes('3기a') || norm.includes('2025-04-01')) return '3기A';
     if (norm.includes('3기b') || norm.includes('2025-10-01')) return '3기B';
     if (norm.includes('3기c') || norm.includes('2025-12-15')) return '3기C';
     if (norm.includes('4기a') || norm.includes('2026-04-01')) return '4기A';
-    
+
     // If unidentified, extract date (YYYY-MM-DD) or fallback to raw string
     const dateMatch = cohortStr.match(/\d{4}-\d{2}-\d{2}/);
     if (dateMatch) {
@@ -760,6 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const dynamicContainer = document.getElementById('cohort-dynamic-options');
   const toggleBlackhole = document.getElementById('toggle-exclude-blackhole');
   const toggleFrozen = document.getElementById('toggle-include-frozen');
+  const toggleMember = document.getElementById('toggle-include-member');
 
   // Helpers to detect status
   function isBlackholed(loginCell) {
@@ -772,10 +855,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function isFrozen(loginCell) {
     const bh = loginCell.getAttribute('data-bh') || '';
     const isActive = loginCell.getAttribute('data-active');
-    
+
     if (bh === '멤버' || bh === '-' || !bh) return true;
     if (isActive === 'false') return true;
-    
+
     const bhDate = new Date(bh).getTime();
     if (!isNaN(bhDate)) {
       const bhYear = new Date(bh).getFullYear();
@@ -784,19 +867,28 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   }
 
+  function isMember(loginCell) {
+    return loginCell.classList.contains('row--member');
+  }
+
+  function isStaff(loginCell) {
+    return loginCell.classList.contains('row--staff');
+  }
+
   let cohortStates = {}; // Keep track of checkbox states to avoid resets on re-renders
 
   // Global function inside DOMContentLoaded
-  let updateFilters = function() {
+  let updateFilters = function () {
     // 1. Get active cohorts
     const cohortCheckboxes = document.querySelectorAll('.cohort-checkbox');
     const activeCohorts = Array.from(cohortCheckboxes)
-                               .filter(c => c.checked)
-                               .map(c => c.value);
+      .filter(c => c.checked)
+      .map(c => c.value);
 
     // Toggles status values
     const includeBlackhole = toggleBlackhole ? toggleBlackhole.checked : true;
     const includeFrozen = toggleFrozen ? toggleFrozen.checked : true;
+    const includeMember = toggleMember ? toggleMember.checked : true;
 
     // 2. Filter Table Rows (AND Intersection: Cohort && Blackhole && Freeze && Circle && Project)
     const currentRows = document.querySelectorAll('.dashboard-table tbody tr');
@@ -834,6 +926,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // Member check
+      if (!includeMember && isMember(loginCell)) {
+        row.style.display = 'none';
+        return;
+      }
+
       // Cohort match
       const cohortVal = loginCell.getAttribute('data-cohort');
       if (!cohortVal || cohortVal === '-') {
@@ -867,7 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       }
-      
+
       // Show row if it satisfies all active criteria (AND logic)
       if (cohortMatch && circleMatch && projectMatch) {
         row.style.display = 'table-row';
@@ -884,7 +982,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function buildCohortCheckboxes() {
     if (!dynamicContainer) return;
-    
+
     // 1. Collect unique cohort values from all current table rows
     const foundCohorts = new Set();
     const currentRows = document.querySelectorAll('.dashboard-table tbody tr');
@@ -901,9 +999,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Compare found cohorts with current checkboxes to see if we need to rebuild
     const currentCBs = document.querySelectorAll('.cohort-checkbox');
     const currentCBValues = Array.from(currentCBs).map(cb => cb.value);
-    const cohortsChanged = foundCohorts.size !== currentCBValues.length || 
-                           Array.from(foundCohorts).some(c => !currentCBValues.includes(c));
-    
+    const cohortsChanged = foundCohorts.size !== currentCBValues.length ||
+      Array.from(foundCohorts).some(c => !currentCBValues.includes(c));
+
     if (!cohortsChanged && currentCBValues.length > 0) {
       updateFilters();
       return;
@@ -938,7 +1036,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. Dynamically build checkboxes (horizontal pill layout)
     dynamicContainer.innerHTML = '';
-    
+
     // Predefined cohorts
     PREDEFINED_COHORTS.forEach(cohort => {
       const label = document.createElement('label');
@@ -956,7 +1054,7 @@ document.addEventListener('DOMContentLoaded', () => {
       details.style.marginLeft = '8px';
       details.style.display = 'inline-block';
       details.style.position = 'relative';
-      
+
       const summary = document.createElement('summary');
       summary.textContent = '기타 기수...';
       summary.style.cursor = 'pointer';
@@ -965,7 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
       summary.style.borderRadius = '4px';
       summary.style.fontSize = '12px';
       summary.style.userSelect = 'none';
-      
+
       const dropdownContent = document.createElement('div');
       dropdownContent.style.display = 'flex';
       dropdownContent.style.gap = '8px';
@@ -1003,10 +1101,10 @@ document.addEventListener('DOMContentLoaded', () => {
     cohortCheckboxes.forEach(cb => {
       cb.addEventListener('change', () => {
         cohortStates[cb.value] = cb.checked;
-        
+
         const allChecked = Array.from(cohortCheckboxes).every(c => c.checked);
         const noneChecked = Array.from(cohortCheckboxes).every(c => !c.checked);
-        
+
         if (allCheckbox) {
           if (allChecked) {
             allCheckbox.checked = true;
@@ -1057,12 +1155,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Toggle check bindings (bind once)
-  if (toggleBlackhole) {
-    toggleBlackhole.addEventListener('change', () => updateFilters());
-  }
-  if (toggleFrozen) {
-    toggleFrozen.addEventListener('change', () => updateFilters());
-  }
+  if (toggleBlackhole) toggleBlackhole.addEventListener('change', updateFilters);
+  if (toggleFrozen) toggleFrozen.addEventListener('change', updateFilters);
+  if (toggleMember) toggleMember.addEventListener('change', updateFilters);
 
   // Initial build of checkboxes (will be empty rows initially, but shows predefined values)
   buildCohortCheckboxes();
@@ -1119,13 +1214,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function parseBhTimestamp(loginCell) {
     if (loginCell.classList.contains('row--member')) return Infinity;
     if (loginCell.classList.contains('row--frozen')) return Infinity;
-    
+
     const bhStr = loginCell.getAttribute('data-bh');
     if (!bhStr || bhStr === '멤버' || bhStr === '-') return Infinity;
-    
+
     const bhDate = new Date(bhStr).getTime();
     if (isNaN(bhDate)) return Infinity;
-    
+
     return bhDate;
   }
 
@@ -1197,12 +1292,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!sortSelector) return;
       const currentVal = sortSelector.value;
       let nextVal = 'level_desc';
-      
+
       if (currentVal === 'level_desc') nextVal = 'name_asc';
       else if (currentVal === 'name_asc') nextVal = 'bh_asc';
       else if (currentVal === 'bh_asc') nextVal = 'level_desc';
       else nextVal = 'level_desc';
-      
+
       sortSelector.value = nextVal;
       sortSelector.dispatchEvent(new Event('change'));
     });
