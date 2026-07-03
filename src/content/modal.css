@@ -1054,11 +1054,13 @@ th.filter-active-unstarted {
 .settings-panel {
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
-  padding: 20px 24px;
+  padding: 16px 24px;
   animation: slideDown 0.18s ease;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 20px;
 }
 
 @keyframes slideDown {
@@ -1068,28 +1070,27 @@ th.filter-active-unstarted {
 
 .settings-row {
   display: flex;
-  align-items: center;
-  gap: 24px;
-  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
 }
 
 .settings-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
-  text-transform: none;
-  letter-spacing: normal;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   white-space: nowrap;
   margin-top: 0;
-  width: 220px;
-  min-width: 220px;
+  margin-bottom: 4px;
 }
 
 .settings-options {
   display: flex;
-  flex-direction: row;
-  gap: 12px;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .settings-radio {
@@ -1117,19 +1118,17 @@ th.filter-active-unstarted {
 }
 
 .settings-divider {
-  height: 1px;
+  width: 1px;
   background: var(--border);
-  margin: 4px 0;
-  width: 100%;
+  margin: 0 10px;
+  align-self: stretch;
 }
 
 .settings-auth-box {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  width: auto;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
 }
 
 .settings-input {
